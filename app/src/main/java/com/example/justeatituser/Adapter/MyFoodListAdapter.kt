@@ -8,8 +8,12 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.example.justeatituser.Callback.IRecyclerItemClickListener
+import com.example.justeatituser.Common.Common
+import com.example.justeatituser.EventBus.FoodItemClick
 import com.example.justeatituser.Model.FoodModel
 import com.example.justeatituser.R
+import org.greenrobot.eventbus.EventBus
 
 class MyFoodListAdapter (internal var context: Context,
                          internal var foodList: List<FoodModel>):
@@ -19,6 +23,18 @@ class MyFoodListAdapter (internal var context: Context,
         Glide.with(context).load(foodList.get(position).image).into(holder.img_food_image!!)
         holder.txt_food_name!!.setText(foodList.get(position).name)
         holder.txt_food_price!!.setText(foodList.get(position).price.toString())
+
+        //Event
+        holder.setListener(object :IRecyclerItemClickListener{
+            override fun onItemClick(view: View, pos: Int) {
+                Common.foodSelected = foodList.get(pos)
+                Common.foodSelected!!.key = pos.toString()
+                EventBus.getDefault().postSticky(FoodItemClick(true,foodList.get(pos)))
+
+            }
+        })
+
+
     }
 
     override fun onCreateViewHolder(
@@ -32,7 +48,12 @@ class MyFoodListAdapter (internal var context: Context,
         return foodList.size
     }
 
-    inner class MyViewHolder (itemView: View): RecyclerView.ViewHolder(itemView){
+    inner class MyViewHolder (itemView: View): RecyclerView.ViewHolder(itemView),
+        View.OnClickListener {
+
+        override fun onClick(view: View?) {
+            listener!!.onItemClick(view!!,adapterPosition)
+        }
 
         var txt_food_name: TextView?=null
         var txt_food_price: TextView?=null
@@ -41,12 +62,22 @@ class MyFoodListAdapter (internal var context: Context,
         var img_fav: ImageView?=null
         var img_cart: ImageView?=null
 
+        internal var listener: IRecyclerItemClickListener?=null
+
+        fun setListener(listener: IRecyclerItemClickListener)
+        {
+            this.listener = listener
+        }
+
         init {
             txt_food_name = itemView.findViewById(R.id.txt_food_name) as TextView
             txt_food_price = itemView.findViewById(R.id.txt_food_price) as TextView
             img_food_image = itemView.findViewById(R.id.img_food_image) as ImageView
             img_cart = itemView.findViewById(R.id.img_quick_cart) as ImageView
             img_fav = itemView.findViewById(R.id.img_fav) as ImageView
+
+            itemView.setOnClickListener(this)
         }
     }
+
 }

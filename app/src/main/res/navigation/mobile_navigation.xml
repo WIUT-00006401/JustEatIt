@@ -19,9 +19,9 @@
 
     <fragment
         android:id="@+id/nav_food_detail"
-        android:name="com.example.justeatituser.ui.slideshow.SlideshowFragment"
-        android:label="@string/menu_slideshow"
-        tools:layout="@layout/fragment_slideshow" />
+        android:name="com.example.justeatituser.ui.fooddetail.FoodDetailFragment"
+        android:label="@string/menu_food_detail"
+        tools:layout="@layout/fragment_food_detail" />
 
     <fragment
         android:id="@+id/nav_tools"
@@ -29,11 +29,7 @@
         android:label="@string/menu_tools"
         tools:layout="@layout/fragment_tools" />
 
-    <fragment
-        android:id="@+id/nav_share"
-        android:name="com.example.justeatituser.ui.share.ShareFragment"
-        android:label="@string/menu_share"
-        tools:layout="@layout/fragment_share" />
+
 
     <fragment
         android:id="@+id/nav_food_list"
