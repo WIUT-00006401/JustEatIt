@@ -17,6 +17,8 @@ import com.example.justeatituser.Model.CommentModel
 import com.example.justeatituser.Model.FoodModel
 import com.example.justeatituser.R
 import com.example.justeatituser.ui.comment.CommentFragment
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.chip.ChipGroup
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.firebase.database.*
 import dmax.dialog.SpotsDialog
@@ -24,6 +26,8 @@ import dmax.dialog.SpotsDialog
 class FoodDetailFragment : Fragment() {
 
     private lateinit var foodDetailViewModel: FoodDetailViewModel
+
+    private lateinit var addonBottomSheetDialog: BottomSheetDialog
 
     private var img_food: ImageView?=null
     private var btnCart: CounterFab?=null
@@ -34,6 +38,16 @@ class FoodDetailFragment : Fragment() {
     private var number_button: ElegantNumberButton?=null
     private var ratingBar: RatingBar?=null
     private var btnShowComment: Button?=null
+
+    private var rdi_group_size:RadioGroup?=null
+    private var img_add_on:ImageView?=null
+    private var chip_group_user_selected_addon: ChipGroup?=null
+
+
+    //Addon Layout
+    private var chip_group_addon:ChipGroup?=null
+    private var edt_search_addon:EditText?=null
+
 
     private var waitingDialog:android.app.AlertDialog?=null
 
@@ -128,7 +142,46 @@ class FoodDetailFragment : Fragment() {
         food_price!!.text = StringBuilder(it!!.price!!.toString())
 
         ratingBar!!.rating = it!!.ratingValue.toFloat()
+
+        //Set size
+        for (sizeModel in it!!.size)
+        {
+            val radioButton = RadioButton(context)
+            radioButton.setOnCheckedChangeListener { compoundButton, b ->
+                if (b)
+                    Common.foodSelected!!.userSelectedSize = sizeModel
+                calculateTotalPrice()
+            }
+            val params = LinearLayout.LayoutParams(0,
+                LinearLayout.LayoutParams.MATCH_PARENT,1.0f)
+            radioButton.layoutParams = params
+            radioButton.text = sizeModel.name
+            radioButton.tag = sizeModel.price
+
+            rdi_group_size!!.addView(radioButton)
+        }
+
+        //Default first radio button select
+        if (rdi_group_size!!.childCount>0)
+        {
+            val radioButton = rdi_group_size!!.getChildAt(0) as RadioButton
+            radioButton.isChecked = true
+        }
     }
+
+    private fun calculateTotalPrice() {
+        var totalPrice = Common.foodSelected!!.price.toDouble()
+        var displayPrice = 0.0
+
+        //Size
+        totalPrice += Common.foodSelected!!.userSelectedSize!!.price!!.toDouble()
+
+        displayPrice = totalPrice * number_button!!.number.toInt()
+        displayPrice = Math.round(displayPrice * 100.0)/100.0
+
+        food_price!!.text = StringBuilder("").append(Common.formatPrice(displayPrice)).toString()
+    }
+
 
     private fun initViews(root: View?) {
         waitingDialog = SpotsDialog.Builder().setContext(context!!).setCancelable(false).build()
@@ -142,6 +195,11 @@ class FoodDetailFragment : Fragment() {
         number_button = root!!.findViewById(R.id.number_button) as ElegantNumberButton
         ratingBar = root!!.findViewById(R.id.ratingBar) as RatingBar
         btnShowComment = root!!.findViewById(R.id.btnShowComment) as Button
+        rdi_group_size = root!!.findViewById(R.id.rdi_group_size) as RadioGroup
+        img_add_on = root!!.findViewById(R.id.img_add_addon) as ImageView
+        chip_group_user_selected_addon = root!!.findViewById(R.id.chip_group_user_selected_addon) as ChipGroup
+
+
 
         //Event
         btnRating!!.setOnClickListener{
