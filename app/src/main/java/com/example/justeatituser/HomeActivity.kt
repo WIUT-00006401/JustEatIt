@@ -14,8 +14,19 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import android.view.Menu
 import android.widget.Toast
+import androidx.navigation.NavController
+import com.example.justeatituser.Common.Common
+import com.example.justeatituser.Database.CartDataSource
+import com.example.justeatituser.Database.CartDatabase
+import com.example.justeatituser.Database.LocalCartDataSource
 import com.example.justeatituser.EventBus.CategoryClick
+import com.example.justeatituser.EventBus.CountCartEvent
 import com.example.justeatituser.EventBus.FoodItemClick
+import io.reactivex.SingleObserver
+import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.Disposable
+import io.reactivex.schedulers.Schedulers
+import kotlinx.android.synthetic.main.app_bar_home.*
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -23,6 +34,14 @@ import org.greenrobot.eventbus.ThreadMode
 class HomeActivity : AppCompatActivity() {
 
     private lateinit var appBarConfiguration: AppBarConfiguration
+    private lateinit var cartDataSource: CartDataSource
+    private lateinit var navController: NavController
+
+    override fun onResume() {
+        super.onResume()
+        countCartItem()
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,11 +49,13 @@ class HomeActivity : AppCompatActivity() {
         val toolbar: Toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
 
+        cartDataSource = LocalCartDataSource(CartDatabase.getInstance(this).cartDAO())
+
         val fab: FloatingActionButton = findViewById(R.id.fab)
         fab.setOnClickListener { view ->
-            Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                .setAction("Action", null).show()
+            navController.navigate(R.id.nav_cart)
         }
+
         val drawerLayout: DrawerLayout = findViewById(R.id.drawer_layout)
         val navView: NavigationView = findViewById(R.id.nav_view)
         val navController = findNavController(R.id.nav_host_fragment)
@@ -48,6 +69,8 @@ class HomeActivity : AppCompatActivity() {
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+
+        countCartItem()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -91,5 +114,33 @@ class HomeActivity : AppCompatActivity() {
         }
     }
 
+    @Subscribe (sticky = true, threadMode = ThreadMode.MAIN)
+    fun onCountCartEvent(event: CountCartEvent)
+    {
+        if (event.isSuccess)
+        {
+            countCartItem()
+        }
+    }
+
+    private fun countCartItem() {
+        cartDataSource.countItemInCart(Common.currentUser!!.uid!!)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(object : SingleObserver<Int> {
+                override fun onSuccess(t: Int) {
+                    fab.count = t
+                }
+
+                override fun onSubscribe(d: Disposable) {
+
+                }
+
+                override fun onError(e: Throwable) {
+                    Toast.makeText(this@HomeActivity,"[COUNT CART]"+e.message,Toast.LENGTH_SHORT).show()
+                }
+
+            })
+    }
 
 }
