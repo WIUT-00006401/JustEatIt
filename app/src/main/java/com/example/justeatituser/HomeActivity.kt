@@ -22,6 +22,7 @@ import com.example.justeatituser.Database.LocalCartDataSource
 import com.example.justeatituser.EventBus.CategoryClick
 import com.example.justeatituser.EventBus.CountCartEvent
 import com.example.justeatituser.EventBus.FoodItemClick
+import com.example.justeatituser.EventBus.HideFABCart
 import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
@@ -56,9 +57,10 @@ class HomeActivity : AppCompatActivity() {
             navController.navigate(R.id.nav_cart)
         }
 
+
         val drawerLayout: DrawerLayout = findViewById(R.id.drawer_layout)
         val navView: NavigationView = findViewById(R.id.nav_view)
-        val navController = findNavController(R.id.nav_host_fragment)
+        navController = findNavController(R.id.nav_host_fragment)
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
         appBarConfiguration = AppBarConfiguration(
@@ -70,7 +72,7 @@ class HomeActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
-        countCartItem()
+        //countCartItem()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -121,6 +123,17 @@ class HomeActivity : AppCompatActivity() {
         {
             countCartItem()
         }
+    }
+
+    @Subscribe (sticky = true, threadMode = ThreadMode.MAIN)
+    fun onHideFABEvent(event: HideFABCart)
+    {
+        if (event.isHide)
+        {
+            fab.hide()
+        }
+        else
+            fab.show()
     }
 
     private fun countCartItem() {
