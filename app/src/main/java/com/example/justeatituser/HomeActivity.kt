@@ -1,5 +1,6 @@
 package com.example.justeatituser
 
+import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -22,11 +23,15 @@ import com.example.justeatituser.Common.Common
 import com.example.justeatituser.Database.CartDataSource
 import com.example.justeatituser.Database.CartDatabase
 import com.example.justeatituser.Database.LocalCartDataSource
-import com.example.justeatituser.EventBus.CategoryClick
-import com.example.justeatituser.EventBus.CountCartEvent
-import com.example.justeatituser.EventBus.FoodItemClick
-import com.example.justeatituser.EventBus.HideFABCart
+import com.example.justeatituser.EventBus.*
+import com.example.justeatituser.Model.CategoryModel
+import com.example.justeatituser.Model.FoodModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
+import dmax.dialog.SpotsDialog
 import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
@@ -42,6 +47,8 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var cartDataSource: CartDataSource
     private lateinit var navController: NavController
     private var drawer:DrawerLayout?=null
+    private var dialog: AlertDialog?=null
+
 
 
     override fun onResume() {
@@ -53,6 +60,9 @@ class HomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
+
+        dialog = SpotsDialog.Builder().setContext(this).setCancelable(false).build()
+
         val toolbar: Toolbar = findViewById(R.id.toolbar)
         setSupportActionBar(toolbar)
 
@@ -183,6 +193,73 @@ class HomeActivity : AppCompatActivity() {
         {
             //Toast.makeText(this,"Click to "+event.category.name,Toast.LENGTH_SHORT).show()
             findNavController(R.id.nav_host_fragment).navigate(R.id.nav_food_detail)
+        }
+    }
+
+    @Subscribe (sticky = true, threadMode = ThreadMode.MAIN)
+    fun onPopularFoodItemClick(event: PopularFoodItemClick)
+    {
+        if (event.popularCategoryModel!=null)
+        {
+            dialog!!.show()
+
+            FirebaseDatabase.getInstance()
+                .getReference("Category")
+                .child(event.popularCategoryModel!!.menu_id!!)
+                .addListenerForSingleValueEvent(object : ValueEventListener {
+                    override fun onCancelled(p0: DatabaseError) {
+                        dialog!!.dismiss()
+                        Toast.makeText(this@HomeActivity,""+p0.message,Toast.LENGTH_SHORT).show()
+                    }
+
+                    override fun onDataChange(p0: DataSnapshot) {
+                        if (p0.exists())
+                        {
+                            Common.categorySelected = p0.getValue(CategoryModel::class.java)
+                            Common.categorySelected!!.menu_id = p0.key
+
+                            //Load Food
+                            FirebaseDatabase.getInstance()
+                                .getReference("Category")
+                                .child(event.popularCategoryModel!!.menu_id!!)
+                                .child("foods")
+                                .orderByChild("id")
+                                .equalTo(event.popularCategoryModel.food_id)
+                                .limitToLast(1)
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onCancelled(p0: DatabaseError) {
+                                        dialog!!.dismiss()
+                                        Toast.makeText(this@HomeActivity,""+p0.message,Toast.LENGTH_SHORT).show()
+                                    }
+
+                                    override fun onDataChange(p0: DataSnapshot) {
+                                        if (p0.exists())
+                                        {
+                                            for (foodSnapshot in p0.children)
+                                            {
+                                                Common.foodSelected = foodSnapshot.getValue(FoodModel::class.java)
+                                                Common.foodSelected!!.key = foodSnapshot.key
+                                            }
+                                            navController.navigate(R.id.nav_food_detail)
+                                        }
+                                        else
+                                        {
+
+                                            Toast.makeText(this@HomeActivity,"Item doesn't exist",Toast.LENGTH_SHORT).show()
+                                        }
+                                        dialog!!.dismiss()
+                                    }
+
+                                })
+                        }
+                        else
+                        {
+                            dialog!!.dismiss()
+                            Toast.makeText(this@HomeActivity,"Item doesn't exist",Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                })
         }
     }
 
