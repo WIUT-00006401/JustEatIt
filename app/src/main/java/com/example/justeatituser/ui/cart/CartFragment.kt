@@ -2,7 +2,9 @@ package com.example.justeatituser.ui.cart
 
 import android.app.AlertDialog
 import android.graphics.Color
+import android.location.Location
 import android.os.Bundle
+import android.os.Looper
 import android.os.Parcelable
 import android.text.TextUtils
 import android.view.*
@@ -26,6 +28,7 @@ import com.example.justeatituser.EventBus.HideFABCart
 import com.example.justeatituser.EventBus.UpdateItemInCart
 import com.example.justeatituser.R
 import com.google.android.gms.common.api.Status
+import com.google.android.gms.location.*
 import io.reactivex.Single
 import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -51,9 +54,17 @@ class CartFragment : Fragment() {
     var recycler_cart: RecyclerView?=null
     var adapter:MyCartAdapter?=null
 
+    private lateinit var locationRequest: LocationRequest
+    private lateinit var locationCallback: LocationCallback
+    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    private lateinit var currentLocation: Location
+
     override fun onResume() {
         super.onResume()
         calculateTotalPrice()
+        if (fusedLocationProviderClient!=null)
+            fusedLocationProviderClient.requestLocationUpdates(locationRequest,locationCallback,
+                Looper.getMainLooper())
     }
 
     override fun onCreateView(
@@ -68,6 +79,7 @@ class CartFragment : Fragment() {
         cartViewModel.initCartDataSource(context!!)
         val root = inflater.inflate(R.layout.fragment_cart, container, false)
         initViews(root)
+        initLocation()
         cartViewModel.getMutableLiveDataCartItem().observe(this, Observer {
             if (it == null || it.isEmpty())
             {
@@ -86,6 +98,31 @@ class CartFragment : Fragment() {
             }
         })
         return root
+    }
+
+    private fun initLocation() {
+        buildLocationRequest()
+        buildLocationCallback()
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(context!!)
+        fusedLocationProviderClient!!.requestLocationUpdates(locationRequest,locationCallback,
+            Looper.getMainLooper())
+    }
+
+    private fun buildLocationCallback() {
+        locationCallback = object : LocationCallback(){
+            override fun onLocationResult(p0: LocationResult?) {
+                super.onLocationResult(p0)
+                currentLocation = p0!!.lastLocation
+            }
+        }
+    }
+
+    private fun buildLocationRequest() {
+        locationRequest = LocationRequest()
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+        locationRequest.setInterval(5000)
+        locationRequest.setFastestInterval(3000)
+        locationRequest.setSmallestDisplacement(10f)
     }
 
     private fun initViews(root:View) {
@@ -156,6 +193,8 @@ class CartFragment : Fragment() {
 
             val view = LayoutInflater.from(context).inflate(R.layout.layout_place_order, null)
 
+            val edt_comment = view.findViewById<View>(R.id.edt_comment) as EditText
+            val txt_address = view.findViewById<View>(R.id.txt_address_detail) as TextView
             val edt_address = view.findViewById<View>(R.id.edt_address) as EditText
             val rdi_home = view.findViewById<View>(R.id.rdi_home_address) as RadioButton
             val rdi_other_address = view.findViewById<View>(R.id.rdi_other_address) as RadioButton
@@ -171,6 +210,7 @@ class CartFragment : Fragment() {
                 if (b)
                 {
                     edt_address.setText(Common.currentUser!!.address!!)
+                    txt_address.visibility = View.GONE
 
                 }
             }
@@ -184,35 +224,39 @@ class CartFragment : Fragment() {
             rdi_ship_to_this_address.setOnCheckedChangeListener{compoundButton, b ->
                 if (b)
                 {
-//                    fusedLocationProviderClient!!.lastLocation
-//                        .addOnFailureListener { e->
-//                            txt_address.visibility = View.GONE
-//                            Toast.makeText(context!!, ""+e.message,Toast.LENGTH_SHORT).show()
-//                        }
-//                        .addOnCompleteListener {
-//                                task ->
-//                            val coordinates = java.lang.StringBuilder()
-//                                .append(task.result!!.latitude)
-//                                .append("/")
-//                                .append(task.result!!.longitude)
-//                                .toString()
-//
-//                            val singleAddress = Single.just(getAddressFromLatLng(task.result!!.latitude,
-//                                task.result!!.longitude))
-//
-//                            val disposable = singleAddress.subscribeWith(object : DisposableSingleObserver<String>(){
-//                                override fun onSuccess(t: String) {
-//                                    txt_address.setText(t)
-//                                }
-//
-//                                override fun onError(e: Throwable) {
-//                                    txt_address.setText(e.message!!)
-//                                }
-//
-//                            })
-//
-//
-//                        }
+                    fusedLocationProviderClient!!.lastLocation
+                        .addOnFailureListener { e->
+                            txt_address.visibility = View.GONE
+                            Toast.makeText(context!!, ""+e.message,Toast.LENGTH_SHORT).show()
+                        }
+                        .addOnCompleteListener {
+                                task ->
+                            val coordinates = java.lang.StringBuilder()
+                                .append(task.result!!.latitude)
+                                .append("/")
+                                .append(task.result!!.longitude)
+                                .toString()
+
+                            edt_address.setText(coordinates)
+                            txt_address.visibility = View.VISIBLE
+                            txt_address.setText("Later")
+
+                            /*val singleAddress = Single.just(getAddressFromLatLng(task.result!!.latitude,
+                                task.result!!.longitude))
+
+                            val disposable = singleAddress.subscribeWith(object : DisposableSingleObserver<String>(){
+                                override fun onSuccess(t: String) {
+                                    txt_address.setText(t)
+                                }
+
+                                override fun onError(e: Throwable) {
+                                    txt_address.setText(e.message!!)
+                                }
+
+                            })*/
+
+
+                        }
                 }
             }
 
@@ -269,12 +313,14 @@ class CartFragment : Fragment() {
     }
 
     override fun onStop() {
-        super.onStop()
         cartViewModel!!.onStop()
         compositeDisposable!!.clear()
         EventBus.getDefault().postSticky(HideFABCart(false))
         if (EventBus.getDefault().isRegistered(this))
             EventBus.getDefault().unregister(this)
+        if (fusedLocationProviderClient!=null)
+            fusedLocationProviderClient.removeLocationUpdates(locationCallback)
+        super.onStop()
     }
 
     @Subscribe(sticky = true,threadMode = ThreadMode.MAIN)

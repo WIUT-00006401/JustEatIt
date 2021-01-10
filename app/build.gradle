@@ -87,5 +87,8 @@ dependencies {
 
     kapt 'androidx.room:room-compiler:2.2.0-rc01'
 
+    implementation 'com.karumi:dexter:5.0.0'
+    implementation 'com.google.android.gms:play-services-location:17.0.0'
+
 
 }
