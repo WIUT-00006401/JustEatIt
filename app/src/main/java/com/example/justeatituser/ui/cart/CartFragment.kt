@@ -1,11 +1,12 @@
 package com.example.justeatituser.ui.cart
 
+import android.app.AlertDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Parcelable
+import android.text.TextUtils
 import android.view.*
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.cardview.widget.CardView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
@@ -24,10 +25,13 @@ import com.example.justeatituser.EventBus.CountCartEvent
 import com.example.justeatituser.EventBus.HideFABCart
 import com.example.justeatituser.EventBus.UpdateItemInCart
 import com.example.justeatituser.R
+import com.google.android.gms.common.api.Status
+import io.reactivex.Single
 import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
+import io.reactivex.observers.DisposableSingleObserver
 import io.reactivex.schedulers.Schedulers
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
@@ -39,6 +43,7 @@ class CartFragment : Fragment() {
     private var compositeDisposable: CompositeDisposable = CompositeDisposable()
     private var recyclerViewState: Parcelable?=null
     private lateinit var cartViewModel: CartViewModel
+    private lateinit var btn_place_order:Button
 
     var txt_empty_cart:TextView?=null
     var txt_total_price:TextView?=null
@@ -142,6 +147,96 @@ class CartFragment : Fragment() {
         txt_total_price = root.findViewById(R.id.txt_total_price) as TextView
         group_place_holder = root.findViewById(R.id.group_place_holder) as CardView
 
+        btn_place_order = root.findViewById(R.id.btn_place_order) as Button
+
+        //Event
+        btn_place_order.setOnClickListener{
+            val builder = AlertDialog.Builder(context!!)
+            builder.setTitle("One more step!")
+
+            val view = LayoutInflater.from(context).inflate(R.layout.layout_place_order, null)
+
+            val edt_address = view.findViewById<View>(R.id.edt_address) as EditText
+            val rdi_home = view.findViewById<View>(R.id.rdi_home_address) as RadioButton
+            val rdi_other_address = view.findViewById<View>(R.id.rdi_other_address) as RadioButton
+            val rdi_ship_to_this_address = view.findViewById<View>(R.id.rdi_ship_this_address) as RadioButton
+            val rdi_cod = view.findViewById<View>(R.id.rdi_cod) as RadioButton
+            val rdi_braintree = view.findViewById<View>(R.id.rdi_braintree) as RadioButton
+
+            //Data
+            edt_address.setText(Common.currentUser!!.address!!)
+
+            //Event
+            rdi_home.setOnCheckedChangeListener{compoundButton, b ->
+                if (b)
+                {
+                    edt_address.setText(Common.currentUser!!.address!!)
+
+                }
+            }
+            rdi_other_address.setOnCheckedChangeListener{compoundButton, b ->
+                if (b)
+                {
+                    edt_address.setText("")
+                    edt_address.setHint("Enter Your Address")
+                }
+            }
+            rdi_ship_to_this_address.setOnCheckedChangeListener{compoundButton, b ->
+                if (b)
+                {
+//                    fusedLocationProviderClient!!.lastLocation
+//                        .addOnFailureListener { e->
+//                            txt_address.visibility = View.GONE
+//                            Toast.makeText(context!!, ""+e.message,Toast.LENGTH_SHORT).show()
+//                        }
+//                        .addOnCompleteListener {
+//                                task ->
+//                            val coordinates = java.lang.StringBuilder()
+//                                .append(task.result!!.latitude)
+//                                .append("/")
+//                                .append(task.result!!.longitude)
+//                                .toString()
+//
+//                            val singleAddress = Single.just(getAddressFromLatLng(task.result!!.latitude,
+//                                task.result!!.longitude))
+//
+//                            val disposable = singleAddress.subscribeWith(object : DisposableSingleObserver<String>(){
+//                                override fun onSuccess(t: String) {
+//                                    txt_address.setText(t)
+//                                }
+//
+//                                override fun onError(e: Throwable) {
+//                                    txt_address.setText(e.message!!)
+//                                }
+//
+//                            })
+//
+//
+//                        }
+                }
+            }
+
+            builder.setView(view)
+            builder.setNegativeButton("NO",{dialogInterface, _->dialogInterface.dismiss()})
+                .setPositiveButton("YES", {dialogInterface, _->
+//                    if (rdi_cod.isChecked)
+//                        paymentCOD(txt_address.text.toString(),edt_comment.text.toString())
+//                    else if (rdi_braintree.isChecked)
+//                    {
+//                        address = txt_address.text.toString()
+//                        comment = edt_comment.text.toString()
+//                        if (!TextUtils.isEmpty(Common.currentUser!!.uid))
+//                        {
+//                            val dropInRequest = DropInRequest().clientToken(Common.currentUser!!.uid)
+//                            startActivityForResult(dropInRequest.getIntent(context), REQUEST_BRAINTREE_CODE)
+//                        }
+//                    }
+                })
+
+            val dialog = builder.create()
+            dialog.show()
+        }
+
     }
 
     private fun sumCart() {
@@ -214,7 +309,7 @@ class CartFragment : Fragment() {
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(object :SingleObserver<Double>{
                 override fun onSuccess(price: Double) {
-                    txt_total_price!!.text = StringBuilder("Total: ")
+                    txt_total_price!!.text = StringBuilder("Total: $")
                         .append(Common.formatPrice(price))
                 }
 
