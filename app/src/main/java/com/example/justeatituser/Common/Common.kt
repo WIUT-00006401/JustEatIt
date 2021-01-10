@@ -9,6 +9,7 @@ import android.widget.TextView
 import com.example.justeatituser.Model.*
 import java.math.RoundingMode
 import java.text.DecimalFormat
+import java.util.*
 
 object Common {
 
@@ -49,6 +50,10 @@ object Common {
         }
     }
 
+    fun getNewOrderTopic(): String {
+        return java.lang.StringBuilder("/topics/new_order").toString()
+    }
+
     fun setSpanString(welcome: String, name: String?, txtUser: TextView?) {
         val builder = SpannableStringBuilder()
         builder.append(welcome)
@@ -59,8 +64,16 @@ object Common {
         txtUser!!.setText(builder, TextView.BufferType.SPANNABLE)
     }
 
+    fun createOrderNumber(): String {
+        return java.lang.StringBuilder()
+            .append(System.currentTimeMillis())
+            .append(Math.abs(Random().nextInt()))
+            .toString()
+    }
 
-
+    var authorizeToken: String?=null
+    const val NOTI_TITLE = "title"
+    const val NOTI_CONTENT = "content"
     const val ORDER_REF: String = "Order"
     const val COMMENT_REF: String = "Comments"
     var foodSelected: FoodModel?=null

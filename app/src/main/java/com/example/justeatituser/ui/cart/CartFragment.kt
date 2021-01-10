@@ -27,9 +27,11 @@ import com.example.justeatituser.Database.LocalCartDataSource
 import com.example.justeatituser.EventBus.CountCartEvent
 import com.example.justeatituser.EventBus.HideFABCart
 import com.example.justeatituser.EventBus.UpdateItemInCart
+import com.example.justeatituser.Model.OrderModel
 import com.example.justeatituser.R
 import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.*
+import com.google.firebase.database.FirebaseDatabase
 import io.reactivex.Single
 import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -270,24 +272,123 @@ class CartFragment : Fragment() {
             builder.setView(view)
             builder.setNegativeButton("NO",{dialogInterface, _->dialogInterface.dismiss()})
                 .setPositiveButton("YES", {dialogInterface, _->
-//                    if (rdi_cod.isChecked)
-//                        paymentCOD(txt_address.text.toString(),edt_comment.text.toString())
-//                    else if (rdi_braintree.isChecked)
-//                    {
-//                        address = txt_address.text.toString()
-//                        comment = edt_comment.text.toString()
-//                        if (!TextUtils.isEmpty(Common.currentUser!!.uid))
-//                        {
-//                            val dropInRequest = DropInRequest().clientToken(Common.currentUser!!.uid)
-//                            startActivityForResult(dropInRequest.getIntent(context), REQUEST_BRAINTREE_CODE)
-//                        }
-//                    }
+                    if (rdi_cod.isChecked)
+                        paymentCOD(edt_address.text.toString(),edt_comment.text.toString())
+                    /*else if (rdi_braintree.isChecked)
+                    {
+                        address = txt_address.text.toString()
+                        comment = edt_comment.text.toString()
+                        if (!TextUtils.isEmpty(Common.currentUser!!.uid))
+                        {
+                            val dropInRequest = DropInRequest().clientToken(Common.currentUser!!.uid)
+                            startActivityForResult(dropInRequest.getIntent(context), REQUEST_BRAINTREE_CODE)
+                        }
+                    }*/
                 })
 
             val dialog = builder.create()
             dialog.show()
         }
 
+    }
+
+    private fun paymentCOD(address: String, comment: String) {
+        compositeDisposable.add(cartDataSource!!.getAllCart(Common.currentUser!!.uid!!)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({cartItemList ->
+
+                cartDataSource!!.sumPrice(Common.currentUser!!.uid!!)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(object :SingleObserver<Double>{
+                        override fun onSuccess(totalPrice: Double) {
+                            val finalPrice = totalPrice
+                            val order = OrderModel()
+                            order.userId = Common.currentUser!!.uid!!
+                            order.userName = Common.currentUser!!.name!!
+                            order.userPhone = Common.currentUser!!.phone!!
+                            order.shippingAddress = address
+                            order.comment = comment
+
+                            if (currentLocation != null)
+                            {
+                                order.lat = currentLocation!!.latitude
+                                order.lng = currentLocation!!.longitude
+                            }
+
+                            order.cartItemList = cartItemList
+                            order.totalPayment = totalPrice
+                            order.finalPayment = finalPrice
+                            order.discount = 0
+                            order.isCod = true
+                            order.transactionId = "Cash On Delivery"
+
+                            //Submit to firebase
+                            writeOrderToFirebase(order)
+                            //syncLocalTimeWithServerTime(order)
+
+                        }
+
+                        override fun onSubscribe(d: Disposable) {
+
+                        }
+
+                        override fun onError(e: Throwable) {
+                            Toast.makeText(context!!,""+e.message,Toast.LENGTH_SHORT).show()
+                        }
+
+                    })
+            }, {throwable -> Toast.makeText(context!!, ""+throwable.message,Toast.LENGTH_SHORT).show() }))
+
+    }
+
+    private fun writeOrderToFirebase(order: OrderModel) {
+        FirebaseDatabase.getInstance()
+            .getReference(Common.ORDER_REF)
+            .child(Common.createOrderNumber())
+            .setValue(order)
+            .addOnFailureListener{e->Toast.makeText(context!!,""+e.message,Toast.LENGTH_SHORT).show()}
+            .addOnCompleteListener{task->
+                //Clean Cart
+                if (task.isSuccessful)
+                {
+                    cartDataSource!!.cleanCart(Common.currentUser!!.uid!!)
+                        .subscribeOn(Schedulers.io())
+                        .observeOn(AndroidSchedulers.mainThread())
+                        .subscribe(object :SingleObserver<Int>{
+                            override fun onSuccess(t: Int) {
+
+                                /*val dataSend = HashMap<String, String>()
+                                dataSend.put(Common.NOTI_TITLE,"New Order")
+                                dataSend.put(Common.NOTI_CONTENT,"You have new order" + Common.currentUser!!.phone)
+
+                                val sendData = FCMSendData(Common.getNewOrderTopic(),dataSend)
+
+                                compositeDisposable.add(
+                                    ifcmService.sendNotification(sendData)
+                                        .subscribeOn(Schedulers.io())
+                                        .observeOn(AndroidSchedulers.mainThread())
+                                        .subscribe({t: FCMResponse?->
+                                            if (t!!.success != 0)
+                                                Toast.makeText(context!!,"Order placed successfully",Toast.LENGTH_SHORT).show()
+                                        },{t: Throwable? ->
+                                            Toast.makeText(context!!,"Order was sent but notification failed",Toast.LENGTH_SHORT).show()
+                                        }))*/
+
+                            }
+
+                            override fun onSubscribe(d: Disposable) {
+
+                            }
+
+                            override fun onError(e: Throwable) {
+                                Toast.makeText(context!!,""+e.message,Toast.LENGTH_SHORT).show()
+                            }
+
+                        })
+                }
+            }
     }
 
     private fun getAddressFromLatLng(latitude: Double, longitude: Double): String {
