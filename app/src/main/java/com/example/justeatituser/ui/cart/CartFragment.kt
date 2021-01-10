@@ -2,6 +2,7 @@ package com.example.justeatituser.ui.cart
 
 import android.app.AlertDialog
 import android.graphics.Color
+import android.location.Geocoder
 import android.location.Location
 import android.os.Bundle
 import android.os.Looper
@@ -39,6 +40,8 @@ import io.reactivex.schedulers.Schedulers
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import java.io.IOException
+import java.util.*
 
 class CartFragment : Fragment() {
 
@@ -237,23 +240,27 @@ class CartFragment : Fragment() {
                                 .append(task.result!!.longitude)
                                 .toString()
 
-                            edt_address.setText(coordinates)
-                            txt_address.visibility = View.VISIBLE
-                            txt_address.setText("Later")
 
-                            /*val singleAddress = Single.just(getAddressFromLatLng(task.result!!.latitude,
+
+                            val singleAddress = Single.just(getAddressFromLatLng(task.result!!.latitude,
                                 task.result!!.longitude))
 
                             val disposable = singleAddress.subscribeWith(object : DisposableSingleObserver<String>(){
                                 override fun onSuccess(t: String) {
+                                    edt_address.setText(coordinates)
+                                    txt_address.visibility = View.VISIBLE
                                     txt_address.setText(t)
                                 }
 
                                 override fun onError(e: Throwable) {
+                                    edt_address.setText(coordinates)
+                                    txt_address.visibility = View.VISIBLE
                                     txt_address.setText(e.message!!)
                                 }
 
-                            })*/
+                            })
+
+
 
 
                         }
@@ -281,6 +288,26 @@ class CartFragment : Fragment() {
             dialog.show()
         }
 
+    }
+
+    private fun getAddressFromLatLng(latitude: Double, longitude: Double): String {
+        val geoCoder = Geocoder(context!!, Locale.getDefault())
+        var result:String?=null
+        try {
+            val addressList = geoCoder.getFromLocation(latitude,longitude,1)
+            if (addressList!=null && addressList.size>0)
+            {
+                val address = addressList[0]
+                val sb = java.lang.StringBuilder(address.getAddressLine(0))
+                result = sb.toString()
+            }
+            else
+                result="Address not found"
+            return result
+        }catch (e: IOException)
+        {
+            return e.message!!
+        }
     }
 
     private fun sumCart() {
