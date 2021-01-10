@@ -264,6 +264,73 @@ class HomeActivity : AppCompatActivity() {
     }
 
     @Subscribe (sticky = true, threadMode = ThreadMode.MAIN)
+    fun onBestDealFoodItemClick(event: BestDealItemClick)
+    {
+        if (event.model!=null)
+        {
+            dialog!!.show()
+
+            FirebaseDatabase.getInstance()
+                .getReference("Category")
+                .child(event.model!!.menu_id!!)
+                .addListenerForSingleValueEvent(object :ValueEventListener{
+                    override fun onCancelled(p0: DatabaseError) {
+                        dialog!!.dismiss()
+                        Toast.makeText(this@HomeActivity,""+p0.message,Toast.LENGTH_SHORT).show()
+                    }
+
+                    override fun onDataChange(p0: DataSnapshot) {
+                        if (p0.exists())
+                        {
+                            Common.categorySelected = p0.getValue(CategoryModel::class.java)
+                            Common.categorySelected!!.menu_id = p0.key
+
+                            //Load Food
+                            FirebaseDatabase.getInstance()
+                                .getReference("Category")
+                                .child(event.model!!.menu_id!!)
+                                .child("foods")
+                                .orderByChild("id")
+                                .equalTo(event.model.food_id)
+                                .limitToLast(1)
+                                .addListenerForSingleValueEvent(object :ValueEventListener{
+                                    override fun onCancelled(p0: DatabaseError) {
+                                        dialog!!.dismiss()
+                                        Toast.makeText(this@HomeActivity,""+p0.message,Toast.LENGTH_SHORT).show()
+                                    }
+
+                                    override fun onDataChange(p0: DataSnapshot) {
+                                        if (p0.exists())
+                                        {
+                                            for (foodSnapshot in p0.children)
+                                            {
+                                                Common.foodSelected = foodSnapshot.getValue(FoodModel::class.java)
+                                                Common.foodSelected!!.key = foodSnapshot.key
+                                            }
+                                            navController.navigate(R.id.nav_food_detail)
+                                        }
+                                        else
+                                        {
+
+                                            Toast.makeText(this@HomeActivity,"Item doesn't exist",Toast.LENGTH_SHORT).show()
+                                        }
+                                        dialog!!.dismiss()
+                                    }
+
+                                })
+                        }
+                        else
+                        {
+                            dialog!!.dismiss()
+                            Toast.makeText(this@HomeActivity,"Item doesn't exist",Toast.LENGTH_SHORT).show()
+                        }
+                    }
+
+                })
+        }
+    }
+
+    @Subscribe (sticky = true, threadMode = ThreadMode.MAIN)
     fun onCountCartEvent(event: CountCartEvent)
     {
         if (event.isSuccess)
