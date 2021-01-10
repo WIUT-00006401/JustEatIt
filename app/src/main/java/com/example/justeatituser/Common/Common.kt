@@ -1,5 +1,11 @@
 package com.example.justeatituser.Common
 
+import android.graphics.Typeface
+import android.text.Spannable
+import android.text.SpannableString
+import android.text.SpannableStringBuilder
+import android.text.style.StyleSpan
+import android.widget.TextView
 import com.example.justeatituser.Model.*
 import java.math.RoundingMode
 import java.text.DecimalFormat
@@ -41,6 +47,16 @@ object Common {
                 result+=addonModel.price!!.toDouble()
             return result
         }
+    }
+
+    fun setSpanString(welcome: String, name: String?, txtUser: TextView?) {
+        val builder = SpannableStringBuilder()
+        builder.append(welcome)
+        val txtSpannable = SpannableString(name)
+        val boldSpan = StyleSpan(Typeface.BOLD)
+        txtSpannable.setSpan(boldSpan, 0, name!!.length, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE)
+        builder.append(txtSpannable)
+        txtUser!!.setText(builder, TextView.BufferType.SPANNABLE)
     }
 
 
