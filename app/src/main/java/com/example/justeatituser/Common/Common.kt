@@ -71,6 +71,11 @@ object Common {
             .toString()
     }
 
+    fun buildToken(authorizeToken: String): String {
+        return java.lang.StringBuilder("Bearer").append(" ").append(authorizeToken).toString()
+    }
+
+    var currentToken: String =""
     var authorizeToken: String?=null
     const val NOTI_TITLE = "title"
     const val NOTI_CONTENT = "content"

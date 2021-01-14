@@ -1,6 +1,8 @@
 package com.example.justeatituser.ui.cart
 
+import android.app.Activity
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.location.Geocoder
 import android.location.Location
@@ -17,18 +19,23 @@ import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.braintreepayments.api.dropin.DropInRequest
+import com.braintreepayments.api.dropin.DropInResult
 import com.example.justeatituser.Adapter.MyCartAdapter
 import com.example.justeatituser.Callback.IMyButtonCallback
 import com.example.justeatituser.Common.Common
 import com.example.justeatituser.Common.MySwipeHelper
 import com.example.justeatituser.Database.CartDataSource
 import com.example.justeatituser.Database.CartDatabase
+import com.example.justeatituser.Database.CartItem
 import com.example.justeatituser.Database.LocalCartDataSource
 import com.example.justeatituser.EventBus.CountCartEvent
 import com.example.justeatituser.EventBus.HideFABCart
 import com.example.justeatituser.EventBus.UpdateItemInCart
 import com.example.justeatituser.Model.OrderModel
 import com.example.justeatituser.R
+import com.example.justeatituser.Remote.ICloudFunctions
+import com.example.justeatituser.Remote.RetrofitCloudClient
 import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.*
 import com.google.firebase.database.FirebaseDatabase
@@ -47,6 +54,9 @@ import java.util.*
 
 class CartFragment : Fragment() {
 
+    private val REQUEST_BRAINTREE_CODE: Int=8888
+
+
     private var cartDataSource: CartDataSource?=null
     private var compositeDisposable: CompositeDisposable = CompositeDisposable()
     private var recyclerViewState: Parcelable?=null
@@ -63,6 +73,13 @@ class CartFragment : Fragment() {
     private lateinit var locationCallback: LocationCallback
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private lateinit var currentLocation: Location
+
+    internal var address:String=""
+    internal var comment:String=""
+
+    lateinit var cloudFunctions: ICloudFunctions
+
+    //lateinit var ifcmService: IFCMService
 
     override fun onResume() {
         super.onResume()
@@ -133,6 +150,10 @@ class CartFragment : Fragment() {
     private fun initViews(root:View) {
 
         setHasOptionsMenu(true)
+
+        cloudFunctions = RetrofitCloudClient.getInstance().create(ICloudFunctions::class.java)
+
+        //ifcmService = RetrofitFCMClient.getInstance().create(IFCMService::class.java)
 
         cartDataSource = LocalCartDataSource(CartDatabase.getInstance(context!!).cartDAO())
 
@@ -274,7 +295,7 @@ class CartFragment : Fragment() {
                 .setPositiveButton("YES", {dialogInterface, _->
                     if (rdi_cod.isChecked)
                         paymentCOD(edt_address.text.toString(),edt_comment.text.toString())
-                    /*else if (rdi_braintree.isChecked)
+                    else if (rdi_braintree.isChecked)
                     {
                         address = txt_address.text.toString()
                         comment = edt_comment.text.toString()
@@ -283,7 +304,7 @@ class CartFragment : Fragment() {
                             val dropInRequest = DropInRequest().clientToken(Common.currentUser!!.uid)
                             startActivityForResult(dropInRequest.getIntent(context), REQUEST_BRAINTREE_CODE)
                         }
-                    }*/
+                    }
                 })
 
             val dialog = builder.create()
@@ -358,7 +379,7 @@ class CartFragment : Fragment() {
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(object :SingleObserver<Int>{
                             override fun onSuccess(t: Int) {
-
+                                Toast.makeText(context!!,"Order placed successfully",Toast.LENGTH_SHORT).show()
                                 /*val dataSend = HashMap<String, String>()
                                 dataSend.put(Common.NOTI_TITLE,"New Order")
                                 dataSend.put(Common.NOTI_CONTENT,"You have new order" + Common.currentUser!!.phone)
@@ -533,5 +554,91 @@ class CartFragment : Fragment() {
             return true
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_BRAINTREE_CODE)
+        {
+            if (resultCode == Activity.RESULT_OK)
+            {
+                val result = data!!.getParcelableExtra<DropInResult>(DropInResult.EXTRA_DROP_IN_RESULT)
+                val nonce  = result!!.paymentMethodNonce
+
+                //calculate sum cart
+                cartDataSource!!.sumPrice(Common.currentUser!!.uid!!)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(object : SingleObserver<Double>{
+                        override fun onSuccess(totalPrice: Double) {
+                            //Get all item to create cart
+                            compositeDisposable.add(
+                                cartDataSource!!.getAllCart(Common.currentUser!!.uid!!)
+                                    .subscribeOn(AndroidSchedulers.mainThread())
+                                    .subscribe({cartItems: List<CartItem>? ->
+                                        //After having all cart items, payment will be submitted
+
+                                        val headers = java.util.HashMap<String, String>()
+                                        headers.put("Authorization",Common.buildToken(Common.authorizeToken!!))
+
+                                        compositeDisposable.add(cloudFunctions.submitPayment(
+                                            headers,
+                                            totalPrice,
+                                            nonce!!.nonce)
+                                            .subscribeOn(Schedulers.io())
+                                            .observeOn(AndroidSchedulers.mainThread())
+                                            .subscribe({braintreeTransaction ->
+                                                if (braintreeTransaction.success)
+                                                {
+                                                    //create Order
+                                                    val finalPrice = totalPrice
+                                                    val order = OrderModel()
+                                                    order.userId = Common.currentUser!!.uid!!
+                                                    order.userName = Common.currentUser!!.name!!
+                                                    order.userPhone = Common.currentUser!!.phone!!
+                                                    order.shippingAddress = address
+                                                    order.comment = comment
+
+                                                    if (currentLocation != null)
+                                                    {
+                                                        order.lat = currentLocation!!.latitude
+                                                        order.lng = currentLocation!!.longitude
+                                                    }
+
+                                                    order.cartItemList = cartItems
+                                                    order.totalPayment = totalPrice
+                                                    order.finalPayment = finalPrice
+                                                    order.discount = 0
+                                                    order.isCod = false
+                                                    order.transactionId = braintreeTransaction.transaction!!.id
+
+                                                    //Submit to firebase
+                                                    //syncLocalTimeWithServerTime(order)
+                                                }
+                                            },
+                                                {t:Throwable? ->
+                                                    Toast.makeText(context,""+t!!.message,Toast.LENGTH_SHORT).show()
+                                                })
+                                        )
+
+                                    },
+                                        {t: Throwable? ->
+                                            Toast.makeText(context,""+t!!.message,Toast.LENGTH_SHORT).show()
+
+                                        })
+                            )
+                        }
+
+                        override fun onSubscribe(d: Disposable) {
+
+                        }
+
+                        override fun onError(e: Throwable) {
+                            Toast.makeText(context,""+e.message,Toast.LENGTH_SHORT).show()
+                        }
+
+                    })
+            }
+        }
     }
 }
