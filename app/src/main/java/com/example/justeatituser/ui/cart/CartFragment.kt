@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Looper
 import android.os.Parcelable
 import android.text.TextUtils
+import android.util.Log
 import android.view.*
 import android.widget.*
 import androidx.cardview.widget.CardView
@@ -22,6 +23,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.braintreepayments.api.dropin.DropInRequest
 import com.braintreepayments.api.dropin.DropInResult
 import com.example.justeatituser.Adapter.MyCartAdapter
+import com.example.justeatituser.Callback.ILoadTimeFromFirebaseCallback
 import com.example.justeatituser.Callback.IMyButtonCallback
 import com.example.justeatituser.Common.Common
 import com.example.justeatituser.Common.MySwipeHelper
@@ -38,7 +40,10 @@ import com.example.justeatituser.Remote.ICloudFunctions
 import com.example.justeatituser.Remote.RetrofitCloudClient
 import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.*
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import io.reactivex.Single
 import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -50,9 +55,20 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.io.IOException
+import java.text.SimpleDateFormat
 import java.util.*
 
-class CartFragment : Fragment() {
+class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
+
+    override fun onLoadTimeSuccess(order: OrderModel, estimatedTimeMs: Long) {
+        order.createDate = (estimatedTimeMs)
+        //order.orderStatus = 0
+        writeOrderToFirebase(order)
+    }
+
+    override fun onLoadTimeFailed(message: String) {
+        Toast.makeText(context!!,message,Toast.LENGTH_SHORT).show()
+    }
 
     private val REQUEST_BRAINTREE_CODE: Int=8888
 
@@ -78,6 +94,8 @@ class CartFragment : Fragment() {
     internal var comment:String=""
 
     lateinit var cloudFunctions: ICloudFunctions
+
+    lateinit var listener: ILoadTimeFromFirebaseCallback
 
     //lateinit var ifcmService: IFCMService
 
@@ -156,6 +174,8 @@ class CartFragment : Fragment() {
         //ifcmService = RetrofitFCMClient.getInstance().create(IFCMService::class.java)
 
         cartDataSource = LocalCartDataSource(CartDatabase.getInstance(context!!).cartDAO())
+
+        listener = this
 
         recycler_cart = root.findViewById(R.id.recycler_cart) as RecyclerView
         recycler_cart!!.setHasFixedSize(true)
@@ -347,7 +367,7 @@ class CartFragment : Fragment() {
 
                             //Submit to firebase
                             writeOrderToFirebase(order)
-                            //syncLocalTimeWithServerTime(order)
+                            syncLocalTimeWithServerTime(order)
 
                         }
 
@@ -362,6 +382,25 @@ class CartFragment : Fragment() {
                     })
             }, {throwable -> Toast.makeText(context!!, ""+throwable.message,Toast.LENGTH_SHORT).show() }))
 
+    }
+
+    private fun syncLocalTimeWithServerTime(order: OrderModel) {
+        val offSetRef = FirebaseDatabase.getInstance().getReference(".info/serverTimeOffset")
+        offSetRef.addListenerForSingleValueEvent(object : ValueEventListener {
+            override fun onCancelled(p0: DatabaseError) {
+                listener.onLoadTimeFailed(p0.message)
+            }
+
+            override fun onDataChange(p0: DataSnapshot) {
+                val offset = p0.getValue(Long::class.java)
+                val estimatedServerTimeInMs = System.currentTimeMillis()+offset!!//Add missing offset to current time
+                val sdf = SimpleDateFormat("MMM dd yyyy, HH:mm")
+                val date = Date(estimatedServerTimeInMs)
+                Log.d("DJDEV", ""+sdf.format(date))
+                listener.onLoadTimeSuccess(order,estimatedServerTimeInMs)
+            }
+
+        })
     }
 
     private fun writeOrderToFirebase(order: OrderModel) {
@@ -615,7 +654,7 @@ class CartFragment : Fragment() {
                                                     order.transactionId = braintreeTransaction.transaction!!.id
 
                                                     //Submit to firebase
-                                                    //syncLocalTimeWithServerTime(order)
+                                                    syncLocalTimeWithServerTime(order)
                                                 }
                                             },
                                                 {t:Throwable? ->
