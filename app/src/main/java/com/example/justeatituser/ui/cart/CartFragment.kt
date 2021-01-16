@@ -299,9 +299,9 @@ class CartFragment : Fragment() {
                     {
                         address = txt_address.text.toString()
                         comment = edt_comment.text.toString()
-                        if (!TextUtils.isEmpty(Common.currentUser!!.uid))
+                        if (!TextUtils.isEmpty(Common.currentToken))
                         {
-                            val dropInRequest = DropInRequest().clientToken(Common.currentUser!!.uid)
+                            val dropInRequest = DropInRequest().clientToken(Common.currentToken)
                             startActivityForResult(dropInRequest.getIntent(context), REQUEST_BRAINTREE_CODE)
                         }
                     }
@@ -570,8 +570,10 @@ class CartFragment : Fragment() {
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(object : SingleObserver<Double>{
+
                         override fun onSuccess(totalPrice: Double) {
                             //Get all item to create cart
+
                             compositeDisposable.add(
                                 cartDataSource!!.getAllCart(Common.currentUser!!.uid!!)
                                     .subscribeOn(AndroidSchedulers.mainThread())

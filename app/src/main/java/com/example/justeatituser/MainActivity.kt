@@ -187,6 +187,7 @@ class MainActivity : AppCompatActivity() {
                 .setValue(userModel)
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful) {
+
                         FirebaseAuth.getInstance().currentUser!!
                             .getIdToken(true)
                             .addOnFailureListener{t->
