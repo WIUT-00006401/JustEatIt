@@ -49,7 +49,7 @@ class HomeActivity : AppCompatActivity() {
     private var drawer:DrawerLayout?=null
     private var dialog: AlertDialog?=null
 
-
+    private var menuItemClick = -1
 
     override fun onResume() {
         super.onResume()
@@ -102,22 +102,22 @@ class HomeActivity : AppCompatActivity() {
                 }
                 else if (p0.itemId ==R.id.nav_home)
                 {
-                    //if (menuItemClick != p0.itemId)
+                    if (menuItemClick != p0.itemId)
                         navController.navigate(R.id.nav_home)
                 }
                 else if (p0.itemId ==R.id.nav_cart)
                 {
-                    //if (menuItemClick != p0.itemId)
+                    if (menuItemClick != p0.itemId)
                         navController.navigate(R.id.nav_cart)
                 }
                 else if (p0.itemId ==R.id.nav_menu)
                 {
-                    //if (menuItemClick != p0.itemId)
+                    if (menuItemClick != p0.itemId)
                         navController.navigate(R.id.nav_menu)
                 }
                 else if (p0.itemId ==R.id.nav_view_order)
                 {
-                    //if (menuItemClick != p0.itemId)
+                    if (menuItemClick != p0.itemId)
                         navController.navigate(R.id.nav_view_order)
                 }
 //                else if (p0.itemId ==R.id.nav_update_info)
@@ -126,7 +126,7 @@ class HomeActivity : AppCompatActivity() {
 //
 //                }
 //
-//                menuItemClick = p0!!.itemId
+                menuItemClick = p0!!.itemId
 
                 return true
             }
@@ -348,6 +348,14 @@ class HomeActivity : AppCompatActivity() {
         }
         else
             fab.show()
+    }
+
+    @Subscribe(sticky = true,threadMode = ThreadMode.MAIN)
+    public fun onMenuItemBack(event: MenuItemBack)
+    {
+        menuItemClick = -1
+        if (supportFragmentManager.backStackEntryCount>0)
+            supportFragmentManager.popBackStack();
     }
 
     private fun countCartItem() {

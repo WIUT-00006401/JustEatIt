@@ -20,6 +20,7 @@ import com.example.justeatituser.Database.CartDatabase
 import com.example.justeatituser.Database.CartItem
 import com.example.justeatituser.Database.LocalCartDataSource
 import com.example.justeatituser.EventBus.CountCartEvent
+import com.example.justeatituser.EventBus.MenuItemBack
 import com.example.justeatituser.Model.CommentModel
 import com.example.justeatituser.Model.FoodModel
 import com.example.justeatituser.R
@@ -447,6 +448,11 @@ class FoodDetailFragment : Fragment(), TextWatcher {
 
         val dialog = builder.create()
         dialog.show()
+    }
+
+    override fun onDestroy() {
+        EventBus.getDefault().postSticky(MenuItemBack())
+        super.onDestroy()
     }
 
 }

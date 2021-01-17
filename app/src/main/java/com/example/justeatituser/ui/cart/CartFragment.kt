@@ -33,6 +33,7 @@ import com.example.justeatituser.Database.CartItem
 import com.example.justeatituser.Database.LocalCartDataSource
 import com.example.justeatituser.EventBus.CountCartEvent
 import com.example.justeatituser.EventBus.HideFABCart
+import com.example.justeatituser.EventBus.MenuItemBack
 import com.example.justeatituser.EventBus.UpdateItemInCart
 import com.example.justeatituser.Model.OrderModel
 import com.example.justeatituser.R
@@ -112,6 +113,8 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
+
+        setHasOptionsMenu(true)
 
         EventBus.getDefault().postSticky(HideFABCart(true))
         cartViewModel =
@@ -593,6 +596,11 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
             return true
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    override fun onDestroy() {
+        EventBus.getDefault().postSticky(MenuItemBack())
+        super.onDestroy()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {

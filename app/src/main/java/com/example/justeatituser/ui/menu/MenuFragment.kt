@@ -17,8 +17,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.justeatituser.Adapter.MyCategoriesAdapter
 import com.example.justeatituser.Common.Common
 import com.example.justeatituser.Common.SpacesItemDecoration
+import com.example.justeatituser.EventBus.MenuItemBack
 import com.example.justeatituser.R
 import dmax.dialog.SpotsDialog
+import org.greenrobot.eventbus.EventBus
 
 class MenuFragment : Fragment() {
 
@@ -78,5 +80,10 @@ class MenuFragment : Fragment() {
         }
         recycler_menu!!.layoutManager = layoutManager
         recycler_menu!!.addItemDecoration(SpacesItemDecoration(8))
+    }
+
+    override fun onDestroy() {
+        EventBus.getDefault().postSticky(MenuItemBack())
+        super.onDestroy()
     }
 }

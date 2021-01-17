@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.justeatituser.Adapter.MyOrderAdapter
 import com.example.justeatituser.Callback.ILoadOrderCallbackListener
 import com.example.justeatituser.Common.Common
+import com.example.justeatituser.EventBus.MenuItemBack
 import com.example.justeatituser.Model.OrderModel
 import com.example.justeatituser.R
 import com.google.firebase.database.DataSnapshot
@@ -165,8 +166,8 @@ class ViewOrderFragment: Fragment(), ILoadOrderCallbackListener {
         Toast.makeText(context!!,message, Toast.LENGTH_SHORT).show()
     }
 
-    /*override fun onDestroy() {
+    override fun onDestroy() {
         EventBus.getDefault().postSticky(MenuItemBack())
         super.onDestroy()
-    }*/
+    }
 }
