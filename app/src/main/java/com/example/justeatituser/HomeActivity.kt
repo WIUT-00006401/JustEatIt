@@ -115,11 +115,11 @@ class HomeActivity : AppCompatActivity() {
                     //if (menuItemClick != p0.itemId)
                         navController.navigate(R.id.nav_menu)
                 }
-//                else if (p0.itemId ==R.id.nav_view_order)
-//                {
-//                    if (menuItemClick != p0.itemId)
-//                        navController.navigate(R.id.nav_view_order)
-//                }
+                else if (p0.itemId ==R.id.nav_view_order)
+                {
+                    //if (menuItemClick != p0.itemId)
+                        navController.navigate(R.id.nav_view_order)
+                }
 //                else if (p0.itemId ==R.id.nav_update_info)
 //                {
 //                    showUpdateInfoDialog()
