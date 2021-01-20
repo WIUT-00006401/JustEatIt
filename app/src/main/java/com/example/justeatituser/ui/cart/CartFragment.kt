@@ -35,10 +35,14 @@ import com.example.justeatituser.EventBus.CountCartEvent
 import com.example.justeatituser.EventBus.HideFABCart
 import com.example.justeatituser.EventBus.MenuItemBack
 import com.example.justeatituser.EventBus.UpdateItemInCart
+import com.example.justeatituser.Model.FCMResponse
+import com.example.justeatituser.Model.FCMSendData
 import com.example.justeatituser.Model.OrderModel
 import com.example.justeatituser.R
 import com.example.justeatituser.Remote.ICloudFunctions
+import com.example.justeatituser.Remote.IFCMService
 import com.example.justeatituser.Remote.RetrofitCloudClient
+import com.example.justeatituser.Remote.RetrofitFCMClient
 import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.*
 import com.google.firebase.database.DataSnapshot
@@ -98,7 +102,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
 
     lateinit var listener: ILoadTimeFromFirebaseCallback
 
-    //lateinit var ifcmService: IFCMService
+    lateinit var ifcmService: IFCMService
 
     override fun onResume() {
         super.onResume()
@@ -174,7 +178,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
 
         cloudFunctions = RetrofitCloudClient.getInstance().create(ICloudFunctions::class.java)
 
-        //ifcmService = RetrofitFCMClient.getInstance().create(IFCMService::class.java)
+        ifcmService = RetrofitFCMClient.getInstance().create(IFCMService::class.java)
 
         cartDataSource = LocalCartDataSource(CartDatabase.getInstance(context!!).cartDAO())
 
@@ -379,7 +383,8 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                         }
 
                         override fun onError(e: Throwable) {
-                            Toast.makeText(context!!,""+e.message,Toast.LENGTH_SHORT).show()
+                            if (!e.message!!.contains("Query returned empty"))
+                                Toast.makeText(context, ""+e.message!!, Toast.LENGTH_SHORT).show()
                         }
 
                     })
@@ -422,7 +427,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                         .subscribe(object :SingleObserver<Int>{
                             override fun onSuccess(t: Int) {
                                 Toast.makeText(context!!,"Order placed successfully",Toast.LENGTH_SHORT).show()
-                                /*val dataSend = HashMap<String, String>()
+                                val dataSend = HashMap<String, String>()
                                 dataSend.put(Common.NOTI_TITLE,"New Order")
                                 dataSend.put(Common.NOTI_CONTENT,"You have new order" + Common.currentUser!!.phone)
 
@@ -437,7 +442,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                                                 Toast.makeText(context!!,"Order placed successfully",Toast.LENGTH_SHORT).show()
                                         },{t: Throwable? ->
                                             Toast.makeText(context!!,"Order was sent but notification failed",Toast.LENGTH_SHORT).show()
-                                        }))*/
+                                        }))
 
                             }
 
@@ -666,6 +671,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                                                 }
                                             },
                                                 {t:Throwable? ->
+
                                                     Toast.makeText(context,""+t!!.message,Toast.LENGTH_SHORT).show()
                                                 })
                                         )
@@ -683,7 +689,8 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                         }
 
                         override fun onError(e: Throwable) {
-                            Toast.makeText(context,""+e.message,Toast.LENGTH_SHORT).show()
+                            if (!e.message!!.contains("Query returned empty"))
+                                Toast.makeText(context, ""+e.message!!, Toast.LENGTH_SHORT).show()
                         }
 
                     })
