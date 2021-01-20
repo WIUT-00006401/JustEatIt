@@ -11,7 +11,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
-class ManuViewModel : ViewModel(), ICategoryCallbackListener {
+class MenuViewModel : ViewModel(), ICategoryCallbackListener {
 
     override fun onCategoryLoadSuccess(categoriesList: List<CategoryModel>) {
         categoriesListMutable!!.value = categoriesList
@@ -42,7 +42,7 @@ class ManuViewModel : ViewModel(), ICategoryCallbackListener {
         return messageError
     }
 
-    private fun loadCategory() {
+    fun loadCategory() {
         val tempList = ArrayList<CategoryModel>()
         val categoryRef = FirebaseDatabase.getInstance().getReference(Common.CATEGORY_REF)
         categoryRef.addListenerForSingleValueEvent(object : ValueEventListener {

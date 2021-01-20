@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -69,8 +70,8 @@ class FoodDetailFragment : Fragment(), TextWatcher {
         }
     }
 
-    private val compositeDisposable= CompositeDisposable()
-    private lateinit var cartDataSource: CartDataSource
+    private val compositeDisposable=CompositeDisposable()
+    private lateinit var cartDataSource:CartDataSource
 
     private lateinit var foodDetailViewModel: FoodDetailViewModel
 
@@ -185,7 +186,7 @@ class FoodDetailFragment : Fragment(), TextWatcher {
         food_description!!.text = StringBuilder(it!!.description!!)
         food_price!!.text = StringBuilder(it!!.price!!.toString())
 
-        ratingBar!!.rating = it!!.ratingValue.toFloat() / it!!.ratingCount
+        ratingBar!!.rating = it!!.ratingValue.toFloat()/it!!.ratingCount
 
         //Set size
         for (sizeModel in it!!.size)
@@ -235,7 +236,9 @@ class FoodDetailFragment : Fragment(), TextWatcher {
 
     private fun initViews(root: View?) {
 
-        cartDataSource= LocalCartDataSource(CartDatabase.getInstance(context!!).cartDAO())
+        (activity as AppCompatActivity).supportActionBar!!.setTitle(Common.foodSelected!!.name)
+
+        cartDataSource=LocalCartDataSource(CartDatabase.getInstance(context!!).cartDAO())
 
         addonBottomSheetDialog = BottomSheetDialog(context!!, R.style.DialogStyle)
         val layout_user_selected_addon = layoutInflater.inflate(R.layout.layout_addon_display, null)
@@ -299,6 +302,7 @@ class FoodDetailFragment : Fragment(), TextWatcher {
                 cartItem.foodSize = Gson().toJson(Common.foodSelected!!.userSelectedSize)
             else
                 cartItem.foodSize="Default"
+
 
             cartDataSource.getItemWithAllOptionsInCart(Common.currentUser!!.uid!!,
                 cartItem.foodId,
@@ -372,6 +376,8 @@ class FoodDetailFragment : Fragment(), TextWatcher {
                     }
 
                 })
+
+
         }
     }
 

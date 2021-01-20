@@ -29,6 +29,7 @@ class MyCategoriesAdapter (internal var context: Context,
                 Common.categorySelected = categoriesList.get(pos)
                 EventBus.getDefault().postSticky(CategoryClick(true,categoriesList.get(pos)))
             }
+
         })
     }
 
