@@ -26,4 +26,6 @@
     <string name="action_search">Search</string>
     <string name="update_info">Update Info</string>
 
+    <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyD6TGMNu8eMuAsaHAAxCGl4PBvOf02Q4aA</string>
+
 </resources>

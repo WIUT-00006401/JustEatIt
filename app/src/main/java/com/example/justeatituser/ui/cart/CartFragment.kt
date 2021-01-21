@@ -45,6 +45,11 @@ import com.example.justeatituser.Remote.RetrofitCloudClient
 import com.example.justeatituser.Remote.RetrofitFCMClient
 import com.google.android.gms.common.api.Status
 import com.google.android.gms.location.*
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.PlacesClient
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment
+import com.google.android.libraries.places.widget.listener.PlaceSelectionListener
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -60,6 +65,7 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.io.IOException
+import java.lang.StringBuilder
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -76,33 +82,44 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
     }
 
     private val REQUEST_BRAINTREE_CODE: Int=8888
+    private var placeSelected: Place?=null
+    private var places_fragment: AutocompleteSupportFragment?=null
+    private lateinit var placeClient: PlacesClient
+    private val placeFields = Arrays.asList(
+        Place.Field.ID,
+        Place.Field.NAME,
+        Place.Field.ADDRESS,
+        Place.Field.LAT_LNG)
 
-
-    private var cartDataSource: CartDataSource?=null
-    private var compositeDisposable: CompositeDisposable = CompositeDisposable()
-    private var recyclerViewState: Parcelable?=null
+    private var cartDataSource:CartDataSource?=null
+    private var compositeDisposable:CompositeDisposable = CompositeDisposable()
+    private var recyclerViewState:Parcelable?=null
     private lateinit var cartViewModel: CartViewModel
     private lateinit var btn_place_order:Button
 
     var txt_empty_cart:TextView?=null
     var txt_total_price:TextView?=null
-    var group_place_holder: CardView?=null
-    var recycler_cart: RecyclerView?=null
+    var group_place_holder:CardView?=null
+    var recycler_cart:RecyclerView?=null
     var adapter:MyCartAdapter?=null
 
-    private lateinit var locationRequest: LocationRequest
+    private lateinit var locationRequest:LocationRequest
     private lateinit var locationCallback: LocationCallback
-    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
-    private lateinit var currentLocation: Location
+    private lateinit var fusedLocationProviderClient:FusedLocationProviderClient
+    private lateinit var currentLocation:Location
 
     internal var address:String=""
     internal var comment:String=""
 
-    lateinit var cloudFunctions: ICloudFunctions
-
-    lateinit var listener: ILoadTimeFromFirebaseCallback
+    lateinit var cloudFunctions:ICloudFunctions
 
     lateinit var ifcmService: IFCMService
+
+
+    lateinit var listener:ILoadTimeFromFirebaseCallback
+
+
+
 
     override fun onResume() {
         super.onResume()
@@ -124,6 +141,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
         cartViewModel =
             ViewModelProviders.of(this).get(CartViewModel::class.java)
         cartViewModel.initCartDataSource(context!!)
+        //val root = inflater.inflate(com.google.android.gms.location.R.layout.fragment_cart, container, false)
         val root = inflater.inflate(R.layout.fragment_cart, container, false)
         initViews(root)
         initLocation()
@@ -174,6 +192,8 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
 
     private fun initViews(root:View) {
 
+        initPlacesClient()
+
         setHasOptionsMenu(true)
 
         cloudFunctions = RetrofitCloudClient.getInstance().create(ICloudFunctions::class.java)
@@ -184,13 +204,15 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
 
         listener = this
 
+        //recycler_cart = root.findViewById(com.google.android.gms.location.R.id.recycler_cart) as RecyclerView
         recycler_cart = root.findViewById(R.id.recycler_cart) as RecyclerView
         recycler_cart!!.setHasFixedSize(true)
         val layoutManager = LinearLayoutManager(context)
         recycler_cart!!.layoutManager = layoutManager
         recycler_cart!!.addItemDecoration(DividerItemDecoration(context,layoutManager.orientation))
 
-        val swipe = object : MySwipeHelper(context!!,recycler_cart!!,200)
+
+        val swipe = object :MySwipeHelper(context!!,recycler_cart!!,200)
         {
             override fun instantiateMyButton(
                 viewHolder: RecyclerView.ViewHolder,
@@ -201,7 +223,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                     30,
                     0,
                     Color.parseColor("#FF3c30"),
-                    object : IMyButtonCallback {
+                    object :IMyButtonCallback{
                         override fun onClick(pos: Int) {
                             Toast.makeText(context,"Delete Item",Toast.LENGTH_SHORT).show()
 
@@ -233,6 +255,12 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
 
         }
 
+        /*txt_empty_cart = root.findViewById(com.google.android.gms.location.R.id.txt_empty_cart) as TextView
+        txt_total_price = root.findViewById(com.google.android.gms.location.R.id.txt_total_price) as TextView
+        group_place_holder = root.findViewById(com.google.android.gms.location.R.id.group_place_holder) as CardView
+
+        btn_place_order = root.findViewById(com.google.android.gms.location.R.id.btn_place_order) as Button*/
+
         txt_empty_cart = root.findViewById(R.id.txt_empty_cart) as TextView
         txt_total_price = root.findViewById(R.id.txt_total_price) as TextView
         group_place_holder = root.findViewById(R.id.group_place_holder) as CardView
@@ -244,34 +272,57 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
             val builder = AlertDialog.Builder(context!!)
             builder.setTitle("One more step!")
 
+            /*val view = LayoutInflater.from(context).inflate(com.google.android.gms.location.R.layout.layout_place_order, null)
+
+            val edt_comment = view.findViewById<View>(com.google.android.gms.location.R.id.edt_comment) as EditText
+            val txt_address = view.findViewById<View>(com.google.android.gms.location.R.id.txt_address_detail) as TextView
+            val rdi_home = view.findViewById<View>(com.google.android.gms.location.R.id.rdi_home_address) as RadioButton
+            val rdi_other_address = view.findViewById<View>(com.google.android.gms.location.R.id.rdi_other_address) as RadioButton
+            val rdi_ship_to_this_address = view.findViewById<View>(com.google.android.gms.location.R.id.rdi_ship_this_address) as RadioButton
+            val rdi_cod = view.findViewById<View>(com.google.android.gms.location.R.id.rdi_cod) as RadioButton
+            val rdi_braintree = view.findViewById<View>(com.google.android.gms.location.R.id.rdi_braintree) as RadioButton*/
+
             val view = LayoutInflater.from(context).inflate(R.layout.layout_place_order, null)
 
             val edt_comment = view.findViewById<View>(R.id.edt_comment) as EditText
             val txt_address = view.findViewById<View>(R.id.txt_address_detail) as TextView
-            val edt_address = view.findViewById<View>(R.id.edt_address) as EditText
             val rdi_home = view.findViewById<View>(R.id.rdi_home_address) as RadioButton
             val rdi_other_address = view.findViewById<View>(R.id.rdi_other_address) as RadioButton
             val rdi_ship_to_this_address = view.findViewById<View>(R.id.rdi_ship_this_address) as RadioButton
             val rdi_cod = view.findViewById<View>(R.id.rdi_cod) as RadioButton
             val rdi_braintree = view.findViewById<View>(R.id.rdi_braintree) as RadioButton
 
+            //places_fragment = activity!!.supportFragmentManager.findFragmentById(com.google.android.gms.location.R.id.places_autocomplete_fragment)
+            places_fragment = activity!!.supportFragmentManager.findFragmentById(R.id.places_autocomplete_fragment)
+                    as AutocompleteSupportFragment
+            places_fragment!!.setPlaceFields(placeFields)
+            places_fragment!!.setOnPlaceSelectedListener(object : PlaceSelectionListener {
+                override fun onPlaceSelected(p0: Place) {
+                    placeSelected = p0
+                    txt_address.text = placeSelected!!.address
+                }
+
+                override fun onError(p0: Status) {
+                    Toast.makeText(context,""+p0.statusMessage,Toast.LENGTH_SHORT).show()
+                }
+
+            })
+
             //Data
-            edt_address.setText(Common.currentUser!!.address!!)
+            txt_address.setText(Common.currentUser!!.address!!)
 
             //Event
             rdi_home.setOnCheckedChangeListener{compoundButton, b ->
                 if (b)
                 {
-                    edt_address.setText(Common.currentUser!!.address!!)
-                    txt_address.visibility = View.GONE
+                    txt_address.setText(Common.currentUser!!.address!!)
 
                 }
             }
             rdi_other_address.setOnCheckedChangeListener{compoundButton, b ->
                 if (b)
                 {
-                    edt_address.setText("")
-                    edt_address.setHint("Enter Your Address")
+                    txt_address.setText("")
                 }
             }
             rdi_ship_to_this_address.setOnCheckedChangeListener{compoundButton, b ->
@@ -284,33 +335,25 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                         }
                         .addOnCompleteListener {
                                 task ->
-                            val coordinates = java.lang.StringBuilder()
+                            val coordinates = StringBuilder()
                                 .append(task.result!!.latitude)
                                 .append("/")
                                 .append(task.result!!.longitude)
                                 .toString()
-
-
 
                             val singleAddress = Single.just(getAddressFromLatLng(task.result!!.latitude,
                                 task.result!!.longitude))
 
                             val disposable = singleAddress.subscribeWith(object : DisposableSingleObserver<String>(){
                                 override fun onSuccess(t: String) {
-                                    edt_address.setText(coordinates)
-                                    txt_address.visibility = View.VISIBLE
                                     txt_address.setText(t)
                                 }
 
                                 override fun onError(e: Throwable) {
-                                    edt_address.setText(coordinates)
-                                    txt_address.visibility = View.VISIBLE
                                     txt_address.setText(e.message!!)
                                 }
 
                             })
-
-
 
 
                         }
@@ -321,14 +364,14 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
             builder.setNegativeButton("NO",{dialogInterface, _->dialogInterface.dismiss()})
                 .setPositiveButton("YES", {dialogInterface, _->
                     if (rdi_cod.isChecked)
-                        paymentCOD(edt_address.text.toString(),edt_comment.text.toString())
+                        paymentCOD(txt_address.text.toString(),edt_comment.text.toString())
                     else if (rdi_braintree.isChecked)
                     {
                         address = txt_address.text.toString()
                         comment = edt_comment.text.toString()
-                        if (!TextUtils.isEmpty(Common.currentToken))
+                        if (!TextUtils.isEmpty(Common.currentUser!!.uid))
                         {
-                            val dropInRequest = DropInRequest().clientToken(Common.currentToken)
+                            val dropInRequest = DropInRequest().clientToken(Common.currentUser!!.uid)
                             startActivityForResult(dropInRequest.getIntent(context), REQUEST_BRAINTREE_CODE)
                         }
                     }
@@ -340,12 +383,17 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
 
     }
 
+    private fun initPlacesClient() {
+        //Places.initialize(context!!,getString(com.google.android.gms.location.R.string.google_maps_key))
+        Places.initialize(context!!,getString(R.string.google_maps_key))
+        placeClient = Places.createClient(context!!)
+    }
+
     private fun paymentCOD(address: String, comment: String) {
         compositeDisposable.add(cartDataSource!!.getAllCart(Common.currentUser!!.uid!!)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({cartItemList ->
-
                 cartDataSource!!.sumPrice(Common.currentUser!!.uid!!)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
@@ -373,7 +421,6 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                             order.transactionId = "Cash On Delivery"
 
                             //Submit to firebase
-                            writeOrderToFirebase(order)
                             syncLocalTimeWithServerTime(order)
 
                         }
@@ -383,8 +430,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                         }
 
                         override fun onError(e: Throwable) {
-                            if (!e.message!!.contains("Query returned empty"))
-                                Toast.makeText(context, ""+e.message!!, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context!!,""+e.message,Toast.LENGTH_SHORT).show()
                         }
 
                     })
@@ -394,7 +440,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
 
     private fun syncLocalTimeWithServerTime(order: OrderModel) {
         val offSetRef = FirebaseDatabase.getInstance().getReference(".info/serverTimeOffset")
-        offSetRef.addListenerForSingleValueEvent(object : ValueEventListener {
+        offSetRef.addListenerForSingleValueEvent(object :ValueEventListener{
             override fun onCancelled(p0: DatabaseError) {
                 listener.onLoadTimeFailed(p0.message)
             }
@@ -426,7 +472,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(object :SingleObserver<Int>{
                             override fun onSuccess(t: Int) {
-                                Toast.makeText(context!!,"Order placed successfully",Toast.LENGTH_SHORT).show()
+
                                 val dataSend = HashMap<String, String>()
                                 dataSend.put(Common.NOTI_TITLE,"New Order")
                                 dataSend.put(Common.NOTI_CONTENT,"You have new order" + Common.currentUser!!.phone)
@@ -467,13 +513,13 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
             if (addressList!=null && addressList.size>0)
             {
                 val address = addressList[0]
-                val sb = java.lang.StringBuilder(address.getAddressLine(0))
+                val sb = StringBuilder(address.getAddressLine(0))
                 result = sb.toString()
             }
             else
                 result="Address not found"
             return result
-        }catch (e: IOException)
+        }catch (e:IOException)
         {
             return e.message!!
         }
@@ -485,7 +531,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(object : SingleObserver<Double>{
                 override fun onSuccess(t: Double) {
-                    txt_total_price!!.text = java.lang.StringBuilder("Total: $")
+                    txt_total_price!!.text = StringBuilder("Total: $")
                         .append(t)
                 }
 
@@ -505,7 +551,6 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
         super.onStart()
         if (!EventBus.getDefault().isRegistered(this))
             EventBus.getDefault().register(this)
-
     }
 
     override fun onStop() {
@@ -520,14 +565,14 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
     }
 
     @Subscribe(sticky = true,threadMode = ThreadMode.MAIN)
-    fun onUpdateItemInCart(event: UpdateItemInCart){
+    fun onUpdateItemInCart(event:UpdateItemInCart){
         if (event.cartItem!=null)
         {
             recyclerViewState = recycler_cart!!.layoutManager!!.onSaveInstanceState()
             cartDataSource!!.updateCart(event.cartItem)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(object: SingleObserver<Int> {
+                .subscribe(object:SingleObserver<Int>{
                     override fun onSuccess(t: Int) {
                         calculateTotalPrice()
                         recycler_cart!!.layoutManager!!.onRestoreInstanceState(recyclerViewState)
@@ -560,24 +605,27 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                 }
 
                 override fun onError(e: Throwable) {
-                    Toast.makeText(context,"[SUM CART]"+e.message,Toast.LENGTH_SHORT).show()
+                    if (!e.message!!.contains("Query returned empty"))
+                        Toast.makeText(context,"[SUM CART]"+e.message,Toast.LENGTH_SHORT).show()
                 }
 
             })
     }
 
-    //checked
     override fun onPrepareOptionsMenu(menu: Menu) {
+        //menu!!.findItem(com.google.android.gms.location.R.id.action_settings).setVisible(false) //Hide setting menu when in Cart
         menu!!.findItem(R.id.action_settings).setVisible(false) //Hide setting menu when in Cart
         super.onPrepareOptionsMenu(menu)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        //inflater.inflate(com.google.android.gms.location.R.menu.cart_menu,menu)
         inflater.inflate(R.menu.cart_menu,menu)
         super.onCreateOptionsMenu(menu, inflater)
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        //if (item!!.itemId == com.google.android.gms.location.R.id.action_clear_cart)
         if (item!!.itemId == R.id.action_clear_cart)
         {
             cartDataSource!!.cleanCart(Common.currentUser!!.uid!!)
@@ -622,10 +670,8 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(object : SingleObserver<Double>{
-
                         override fun onSuccess(totalPrice: Double) {
                             //Get all item to create cart
-
                             compositeDisposable.add(
                                 cartDataSource!!.getAllCart(Common.currentUser!!.uid!!)
                                     .subscribeOn(AndroidSchedulers.mainThread())
@@ -635,9 +681,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                                         val headers = java.util.HashMap<String, String>()
                                         headers.put("Authorization",Common.buildToken(Common.authorizeToken!!))
 
-                                        compositeDisposable.add(cloudFunctions.submitPayment(
-                                            headers,
-                                            totalPrice,
+                                        compositeDisposable.add(cloudFunctions.submitPayment(headers,totalPrice,
                                             nonce!!.nonce)
                                             .subscribeOn(Schedulers.io())
                                             .observeOn(AndroidSchedulers.mainThread())
@@ -671,7 +715,6 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                                                 }
                                             },
                                                 {t:Throwable? ->
-
                                                     Toast.makeText(context,""+t!!.message,Toast.LENGTH_SHORT).show()
                                                 })
                                         )
@@ -689,12 +732,12 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback {
                         }
 
                         override fun onError(e: Throwable) {
-                            if (!e.message!!.contains("Query returned empty"))
-                                Toast.makeText(context, ""+e.message!!, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context,""+e.message,Toast.LENGTH_SHORT).show()
                         }
 
                     })
             }
         }
     }
+
 }

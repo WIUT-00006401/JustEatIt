@@ -3,6 +3,8 @@ package com.example.justeatituser
 import android.app.AlertDialog
 import android.content.Intent
 import android.os.Bundle
+import android.text.TextUtils
+import android.view.LayoutInflater
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.snackbar.Snackbar
 import androidx.navigation.findNavController
@@ -16,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
 import androidx.navigation.NavController
@@ -26,6 +29,12 @@ import com.example.justeatituser.Database.LocalCartDataSource
 import com.example.justeatituser.EventBus.*
 import com.example.justeatituser.Model.CategoryModel
 import com.example.justeatituser.Model.FoodModel
+import com.google.android.gms.common.api.Status
+import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.Place
+import com.google.android.libraries.places.api.net.PlacesClient
+import com.google.android.libraries.places.widget.AutocompleteSupportFragment
+import com.google.android.libraries.places.widget.listener.PlaceSelectionListener
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
@@ -40,8 +49,18 @@ import kotlinx.android.synthetic.main.app_bar_home.*
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import java.util.*
+import kotlin.collections.HashMap
 
 class HomeActivity : AppCompatActivity() {
+
+    private var placeSelected: Place?=null
+    private var places_fragment:AutocompleteSupportFragment?=null
+    private lateinit var placeClient: PlacesClient
+    private val placeFields = Arrays.asList(Place.Field.ID,
+        Place.Field.NAME,
+        Place.Field.ADDRESS,
+        Place.Field.LAT_LNG)
 
     private lateinit var appBarConfiguration: AppBarConfiguration
     private lateinit var cartDataSource: CartDataSource
@@ -120,19 +139,106 @@ class HomeActivity : AppCompatActivity() {
                     if (menuItemClick != p0.itemId)
                         navController.navigate(R.id.nav_view_order)
                 }
-//                else if (p0.itemId ==R.id.nav_update_info)
-//                {
-//                    showUpdateInfoDialog()
-//
-//                }
-//
+                else if (p0.itemId ==R.id.nav_update_info)
+                {
+                    showUpdateInfoDialog()
+
+                }
+
                 menuItemClick = p0!!.itemId
 
                 return true
             }
         })
 
-        //countCartItem()
+        initPlacesClient()
+
+        countCartItem()
+    }
+
+    private fun initPlacesClient() {
+        Places.initialize(this,getString(R.string.google_maps_key))
+        placeClient = Places.createClient(this)
+    }
+
+    private fun showUpdateInfoDialog() {
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        builder.setTitle("REGISTER")
+        builder.setMessage("Please fill Information")
+
+        val itemView = LayoutInflater.from(this@HomeActivity)
+            .inflate(R.layout.layout_register, null)
+
+        val edt_name = itemView.findViewById<EditText>(R.id.edt_name)
+        val txt_address = itemView.findViewById<TextView>(R.id.txt_address_detail)
+        val edt_phone = itemView.findViewById<EditText>(R.id.edt_phone)
+
+        places_fragment = supportFragmentManager.findFragmentById(R.id.places_autocomplete_fragment)
+                as AutocompleteSupportFragment
+        places_fragment!!.setPlaceFields(placeFields)
+        places_fragment!!.setOnPlaceSelectedListener(object : PlaceSelectionListener {
+            override fun onPlaceSelected(p0: Place) {
+                placeSelected = p0
+                txt_address.text = placeSelected!!.address
+            }
+
+            override fun onError(p0: Status) {
+                Toast.makeText(this@HomeActivity,""+p0.statusMessage,Toast.LENGTH_SHORT).show()
+            }
+
+        })
+
+        //Set
+        edt_phone.setText(Common.currentUser!!.phone)
+        txt_address.setText(Common.currentUser!!.address)
+        edt_name.setText(Common.currentUser!!.name)
+
+        builder.setView(itemView)
+        builder.setNegativeButton("CANCEL"){dialogInterface, i -> dialogInterface.dismiss()}
+        builder.setPositiveButton("UPDATE"){dialogInterface, i->
+
+            if (placeSelected != null) {
+                if (TextUtils.isDigitsOnly(edt_name.text.toString())) {
+                    Toast.makeText(this@HomeActivity, "Please, enter your name", Toast.LENGTH_SHORT)
+                        .show()
+                    return@setPositiveButton
+                }
+
+                val update_data = HashMap<String,Any>()
+                update_data.put("name",edt_name.text.toString())
+                update_data.put("address",txt_address.text.toString())
+                update_data.put("lat", placeSelected!!.latLng!!.latitude)
+                update_data.put("lng",placeSelected!!.latLng!!.longitude)
+
+                FirebaseDatabase.getInstance()
+                    .getReference(Common.USER_REFERENCE)
+                    .child(Common.currentUser!!.uid!!)
+                    .updateChildren(update_data)
+                    .addOnFailureListener{
+                        Toast.makeText(this@HomeActivity,it.message,Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnSuccessListener {
+                        Common.currentUser!!.name = update_data["name"].toString()
+                        Common.currentUser!!.address = update_data["address"].toString()
+                        Common.currentUser!!.lat = update_data["lat"].toString().toDouble()
+                        Common.currentUser!!.lng = update_data["lng"].toString().toDouble()
+
+                        Toast.makeText(this@HomeActivity,"Update Info success", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            else
+            {
+                Toast.makeText(this@HomeActivity,"Please select address", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        val dialog = builder.create()
+        dialog.setOnDismissListener{
+            val fragmentTransaction = supportFragmentManager.beginTransaction()
+            fragmentTransaction.remove(places_fragment!!)
+            fragmentTransaction.commit()
+        }
+        dialog.show()
     }
 
     private fun signOut() {
