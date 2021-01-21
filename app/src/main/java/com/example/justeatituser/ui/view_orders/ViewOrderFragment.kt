@@ -15,7 +15,9 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.justeatituser.Adapter.MyOrderAdapter
 import com.example.justeatituser.Callback.ILoadOrderCallbackListener
+import com.example.justeatituser.Callback.IMyButtonCallback
 import com.example.justeatituser.Common.Common
+import com.example.justeatituser.Common.MySwipeHelper
 import com.example.justeatituser.EventBus.MenuItemBack
 import com.example.justeatituser.Model.OrderModel
 import com.example.justeatituser.R
@@ -99,7 +101,7 @@ class ViewOrderFragment: Fragment(), ILoadOrderCallbackListener {
         recycler_order.addItemDecoration(DividerItemDecoration(context!!,layoutManager.orientation))
 
 
-        /*val swipe = object : MySwipeHelper(context!!,recycler_order!!,250)
+        val swipe = object : MySwipeHelper(context!!,recycler_order!!,250)
         {
             override fun instantiateMyButton(
                 viewHolder: RecyclerView.ViewHolder,
@@ -152,7 +154,7 @@ class ViewOrderFragment: Fragment(), ILoadOrderCallbackListener {
                     }))
             }
 
-        }*/
+        }
 
     }
 
