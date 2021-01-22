@@ -151,6 +151,7 @@ object Common {
         return java.lang.StringBuilder("Bearer").append(" ").append(authorizeToken).toString()
     }
 
+    val REFUND_REQUEST_REF: String="RefundRequest"
     var currentToken: String =""
     var authorizeToken: String?=null
     const val NOTI_TITLE = "title"
