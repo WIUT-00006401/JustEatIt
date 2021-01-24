@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">KotlinEatItV2Client</string>
+    <string name="app_name">User</string>
     <string name="title_activity_home">HomeActivity</string>
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
@@ -27,5 +27,6 @@
     <string name="update_info">Update Info</string>
 
     <string name="google_maps_key" templateMergeStrategy="preserve" translatable="false">AIzaSyD6TGMNu8eMuAsaHAAxCGl4PBvOf02Q4aA</string>
+    <string name="title_activity_tracking_order">Map</string>
 
 </resources>

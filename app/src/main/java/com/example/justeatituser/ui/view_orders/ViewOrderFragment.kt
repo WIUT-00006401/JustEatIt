@@ -1,6 +1,7 @@
 package com.example.justeatituser.ui.view_orders
 
 import android.app.AlertDialog
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -23,7 +24,9 @@ import com.example.justeatituser.Common.MySwipeHelper
 import com.example.justeatituser.EventBus.MenuItemBack
 import com.example.justeatituser.Model.OrderModel
 import com.example.justeatituser.Model.RefundRequestModel
+import com.example.justeatituser.Model.ShippingOrderModel
 import com.example.justeatituser.R
+import com.example.justeatituser.TrackingOrderActivity
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -111,7 +114,7 @@ class ViewOrderFragment: Fragment(), ILoadOrderCallbackListener {
                 buffer: MutableList<MyButton>
             ) {
                 buffer.add(MyButton(context!!,
-                    "Cancel order",
+                    "Cancel Order",
                     30,
                     0,
                     Color.parseColor("#FF3c30"),
@@ -217,6 +220,54 @@ class ViewOrderFragment: Fragment(), ILoadOrderCallbackListener {
                                     .append(Common.convertStatusToText(orderModel.orderStatus))
                                     .append(", so you can't cancel it"), Toast.LENGTH_SHORT).show()
                             }
+                        }
+
+                    }))
+
+
+
+                //Tracking button
+                buffer.add(MyButton(context!!,
+                    "Tracking Order",
+                    30,
+                    0,
+                    Color.parseColor("#001970"),
+                    object : IMyButtonCallback {
+                        override fun onClick(pos: Int) {
+                            val orderModel = (recycler_order.adapter as MyOrderAdapter).getItemAtPosition(pos)
+                            //Fetch from firebase
+                            FirebaseDatabase.getInstance()
+                                .getReference(Common.SHIPPING_ORDER_REF)
+                                .child(orderModel.orderNumber!!)
+                                .addListenerForSingleValueEvent(object : ValueEventListener{
+                                    override fun onCancelled(p0: DatabaseError) {
+                                        Toast.makeText(context!!,p0.message,Toast.LENGTH_SHORT).show()
+                                    }
+
+                                    override fun onDataChange(p0: DataSnapshot) {
+                                        if (p0.exists())
+                                        {
+                                            Common.currentShippingOrder = p0.getValue(
+                                                ShippingOrderModel::class.java)
+                                            Common.currentShippingOrder!!.key = p0.key
+                                            if (Common.currentShippingOrder!!.currentLat!! != -1.0 &&
+                                                    Common.currentShippingOrder!!.currentLng!! != -1.0)
+                                            {
+                                                startActivity(Intent(context!!, TrackingOrderActivity::class.java))
+                                            }
+                                            else
+                                            {
+                                                Toast.makeText(context!!,"Order is being delivered",Toast.LENGTH_SHORT).show()
+
+                                            }
+                                        }
+                                        else
+                                        {
+                                            Toast.makeText(context!!,"Order has been placed, to be waited for delivering",Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+
+                                })
                         }
 
                     }))

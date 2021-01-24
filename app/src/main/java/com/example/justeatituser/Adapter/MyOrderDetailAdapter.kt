@@ -54,9 +54,10 @@ class MyOrderDetailAdapter (internal var context: Context,
             .into(holder.img_food_image!!)
         holder.txt_food_name!!.setText(StringBuilder().append(cartItemList[position].foodName))
         holder.txt_food_quantity!!.setText(StringBuilder("Quantity ").append(cartItemList[position].foodQuantity))
-        val sizeModel:SizeModel = gson.fromJson(cartItemList[position].foodSize,
+        holder.txt_food_size!!.setText(StringBuilder("Size ").append(cartItemList[position].foodSize))
+        /*val sizeModel:SizeModel = gson.fromJson(cartItemList[position].foodSize,
             object :TypeToken<SizeModel?>(){}.type)
-        if (sizeModel != null) holder.txt_food_size!!.setText(StringBuilder("Size: ").append(sizeModel.name))
+        if (sizeModel != null) holder.txt_food_size!!.setText(StringBuilder("Size: ").append(sizeModel.name))*/
         if (!cartItemList[position].foodAddon.equals("Default"))
         {
             val addonModels: List<AddonModel> = gson.fromJson(cartItemList[position].foodAddon,
