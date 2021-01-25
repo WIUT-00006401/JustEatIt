@@ -210,6 +210,17 @@ object Common {
         } else null
     }
 
+    fun getListAddon(addonModels: List<AddonModel>): String {
+        val result = StringBuilder()
+        for (addonModel in addonModels)
+            result.append(addonModel.name).append(",")
+        if (!result.isEmpty())
+            return  result.substring(0,result.length-1)
+        else
+            return "Default"
+
+    }
+
     var currentShippingOrder: ShippingOrderModel?=null
     val SHIPPING_ORDER_REF: String = "ShippingOrder"
     val REFUND_REQUEST_REF: String="RefundRequest"

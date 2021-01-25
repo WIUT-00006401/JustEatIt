@@ -5,9 +5,13 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity(tableName = "Cart")
+@Entity(tableName = "Cart", primaryKeys = ["uid", "categoryId", "foodId", "foodSize", "foodAddon"])
 class CartItem {
-    @PrimaryKey
+
+    @NonNull
+    @ColumnInfo(name = "categoryId")
+    var categoryId:String=""
+
     @NonNull
     @ColumnInfo(name = "foodId")
     var foodId:String=""

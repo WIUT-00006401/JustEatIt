@@ -304,11 +304,11 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
                                         if (dataSnapshot.exists())
                                         {
                                             val categoryModel = dataSnapshot.getValue(CategoryModel::class.java)
-                                            searchCategoryCallbackListener.onSearchFound(categoryModel,cartItem)
+                                            searchCategoryCallbackListener!!.onSearchFound(categoryModel!!,cartItem)
                                         }
                                         else
                                         {
-                                            searchCategoryCallbackListener.onSearchNotFound("Category not found")
+                                            searchCategoryCallbackListener!!.onSearchNotFound("Category not found")
                                         }
                                     }
 
@@ -928,7 +928,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
                     }
 
                     override fun onSubscribe(d: Disposable) {
-                        TODO("Not yet implemented")
+
                     }
 
                     override fun onError(e: Throwable) {

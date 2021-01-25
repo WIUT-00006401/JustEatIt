@@ -79,12 +79,12 @@
 
             </LinearLayout>
 
-            <com.google.android.material.chip.ChipGroup
-                android:id="@+id/chip_group_user_selected_addon"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
-
         </androidx.cardview.widget.CardView>
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chip_group_user_selected_addon"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"/>
 
     </LinearLayout>
 
@@ -113,9 +113,7 @@
             android:padding="8dp"
             android:id="@+id/btn_ok"
             android:text="OK"
-            android:layout_marginLeft="6dp"
-            android:textColor="@android:color/white"
-            android:background="@android:color/transparent"/>
+            android:layout_marginLeft="6dp"/>
 
     </LinearLayout>
 

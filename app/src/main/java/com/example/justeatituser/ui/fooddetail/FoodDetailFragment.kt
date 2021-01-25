@@ -288,6 +288,7 @@ class FoodDetailFragment : Fragment(), TextWatcher {
             cartItem.uid = Common.currentUser!!.uid
             cartItem.userPhone = Common.currentUser!!.phone
 
+            cartItem.categoryId = Common.categorySelected!!.menu_id!!
             cartItem.foodId = Common.foodSelected!!.id!!
             cartItem.foodName = Common.foodSelected!!.name!!
             cartItem.foodImage = Common.foodSelected!!.image!!
@@ -305,6 +306,7 @@ class FoodDetailFragment : Fragment(), TextWatcher {
 
 
             cartDataSource.getItemWithAllOptionsInCart(Common.currentUser!!.uid!!,
+                cartItem.categoryId,
                 cartItem.foodId,
                 cartItem.foodSize!!,
                 cartItem.foodAddon!!)
