@@ -18,6 +18,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.TextView
 import android.widget.Toast
@@ -40,7 +42,9 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import com.google.firebase.messaging.FirebaseMessaging
 import dmax.dialog.SpotsDialog
+import io.paperdb.Paper
 import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
@@ -49,6 +53,7 @@ import kotlinx.android.synthetic.main.app_bar_home.*
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
+import java.lang.Exception
 import java.util.*
 import kotlin.collections.HashMap
 
@@ -144,6 +149,11 @@ class HomeActivity : AppCompatActivity() {
                     showUpdateInfoDialog()
 
                 }
+                else if (p0.itemId ==R.id.nav_news)
+                {
+                    showNewsDialog()
+
+                }
 
                 menuItemClick = p0!!.itemId
 
@@ -154,6 +164,43 @@ class HomeActivity : AppCompatActivity() {
         initPlacesClient()
 
         countCartItem()
+    }
+
+    private fun showNewsDialog() {
+        val builder = androidx.appcompat.app.AlertDialog.Builder(this)
+        builder.setTitle("NEWS SYSTEM")
+        builder.setMessage("Do you want to subscribe news?")
+
+        val itemView = LayoutInflater.from(this@HomeActivity)
+            .inflate(R.layout.layout_subscribe_news, null)
+        val ckb_news = itemView.findViewById<View>(R.id.ckb_subscribe_news) as CheckBox
+        val isSubscribeNews = Paper.book().read<Boolean>(Common.IS_SUBSCRIBE_NEWS,false)
+        if (isSubscribeNews) ckb_news.isChecked = true
+        builder.setNegativeButton("CANCEL",{dialogInterface, i -> dialogInterface.dismiss()})
+        builder.setPositiveButton("SEND",{dialogInterface, i ->
+            if (ckb_news.isChecked)
+            {
+                Paper.book().write(Common.IS_SUBSCRIBE_NEWS,true)
+                FirebaseMessaging.getInstance().subscribeToTopic(Common.NEWS_TOPIC)
+                    .addOnFailureListener{ e:Exception ->
+                        Toast.makeText(this, e.message,Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnSuccessListener { aVoid:Void? ->
+                        Toast.makeText(this,"Subscribe success!", Toast.LENGTH_SHORT).show()
+                    }
+            }
+            else
+            {
+                Paper.book().delete(Common.IS_SUBSCRIBE_NEWS)
+                FirebaseMessaging.getInstance().unsubscribeFromTopic(Common.NEWS_TOPIC)
+                    .addOnFailureListener{ e:Exception ->
+                        Toast.makeText(this, e.message,Toast.LENGTH_SHORT).show()
+                    }
+                    .addOnSuccessListener { aVoid:Void? ->
+                        Toast.makeText(this,"Unsubscribe success!", Toast.LENGTH_SHORT).show()
+                    }
+            }
+        })
     }
 
     private fun initPlacesClient() {
