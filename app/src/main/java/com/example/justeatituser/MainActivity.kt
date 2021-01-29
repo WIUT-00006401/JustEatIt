@@ -22,6 +22,7 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.widget.AutocompleteSupportFragment
 import com.google.android.libraries.places.widget.listener.PlaceSelectionListener
+import com.google.android.material.textfield.TextInputLayout
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.*
@@ -87,7 +88,8 @@ class MainActivity : AppCompatActivity() {
         Places.initialize(this,getString(R.string.google_maps_key))
         placeClient = Places.createClient(this)
 
-        providers = Arrays.asList<AuthUI.IdpConfig>(AuthUI.IdpConfig.PhoneBuilder().build())
+        providers = Arrays.asList<AuthUI.IdpConfig>(AuthUI.IdpConfig.PhoneBuilder().build(),
+        AuthUI.IdpConfig.EmailBuilder().build())
 
         userRef = FirebaseDatabase.getInstance().getReference(Common.USER_REFERENCE)
         firebaseAuth=FirebaseAuth.getInstance()
@@ -185,6 +187,7 @@ class MainActivity : AppCompatActivity() {
         val txt_address = itemView.findViewById<TextView>(com.google.firebase.database.R.id.txt_address_detail)
         val edt_phone = itemView.findViewById<EditText>(com.google.firebase.database.R.id.edt_phone)*/
 
+        val phone_input_layout = itemView.findViewById<TextInputLayout>(R.id.phone_input_layout)
         val edt_name = itemView.findViewById<EditText>(R.id.edt_name)
         val txt_address = itemView.findViewById<TextView>(R.id.txt_address_detail)
         val edt_phone = itemView.findViewById<EditText>(R.id.edt_phone)
@@ -206,7 +209,15 @@ class MainActivity : AppCompatActivity() {
         })
 
         //Set
-        edt_phone.setText(user!!.phoneNumber)
+        if (user.phoneNumber == null || TextUtils.isEmpty(user.phoneNumber))
+        {
+            phone_input_layout.hint = "Email"
+            edt_phone.setText(user.email)
+            edt_name.setText(user.displayName)
+        }
+        else
+            edt_phone.setText(user!!.phoneNumber)
+
 
         builder.setView(itemView)
         builder.setNegativeButton("Cancel"){dialogInterface, i -> dialogInterface.dismiss()}
@@ -306,7 +317,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun phoneLogin(){
-        startActivityForResult(AuthUI.getInstance().createSignInIntentBuilder().setAvailableProviders(providers!!).build(), APP_REQUEST_CODE)
+        startActivityForResult(AuthUI.getInstance().createSignInIntentBuilder()
+            .setTheme(R.style.LoginTheme)
+            .setLogo(R.drawable.logo)
+            .setAvailableProviders(providers!!).build(), APP_REQUEST_CODE)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
