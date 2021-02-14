@@ -8,7 +8,7 @@ class OrderModel {
     var userPhone:String?=null
     var shippingAddress:String?=null
     var comment:String?=null
-    var transactionId:String?=null
+    var transactionId:String?=null  
     var lat:Double = 0.toDouble()
     var lng:Double = 0.toDouble()
     var totalPayment:Double = 0.toDouble()

@@ -94,7 +94,7 @@ class MainActivity : AppCompatActivity() {
         userRef = FirebaseDatabase.getInstance().getReference(Common.USER_REFERENCE)
         firebaseAuth=FirebaseAuth.getInstance()
         dialog = SpotsDialog.Builder().setContext(this).setCancelable(false).build()
-        cloudFunctions = RetrofitCloudClient.getInstance().create(ICloudFunctions::class.java)
+
 
         listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             Dexter.withActivity(this@MainActivity)
@@ -146,24 +146,10 @@ class MainActivity : AppCompatActivity() {
                             .addOnCompleteListener{
                                 Common.authorizeToken = it.result!!.token
 
-                                val headers = HashMap<String, String>()
-                                headers.put("Authorization",Common.buildToken(Common.authorizeToken!!))
 
-                                compositeDisposable.add(cloudFunctions!!.getToken(headers)
-                                    .subscribeOn(Schedulers.io())
-                                    .observeOn(AndroidSchedulers.mainThread())
-                                    .subscribe({braintreeToken ->
-
-                                        dialog.dismiss()
-                                        val userModel = p0.getValue(UserModel::class.java)
-                                        goToHomeActivity(userModel, braintreeToken.token)
-
-                                    }, {throwable ->
-
-                                        dialog.dismiss()
-                                        Toast.makeText(this@MainActivity, ""+throwable.message, Toast.LENGTH_SHORT).show()
-
-                                    }))
+                                dialog.dismiss()
+                                val userModel = p0.getValue(UserModel::class.java)
+                                goToHomeActivity(userModel)
                             }
                     }else{
                         dialog!!.dismiss()
@@ -181,11 +167,7 @@ class MainActivity : AppCompatActivity() {
 
         val itemView = LayoutInflater.from(this@MainActivity)
             .inflate(R.layout.layout_register, null)
-            //.inflate(com.google.firebase.database.R.layout.layout_register, null)
 
-        /*val edt_name = itemView.findViewById<EditText>(com.google.firebase.database.R.id.edt_name)
-        val txt_address = itemView.findViewById<TextView>(com.google.firebase.database.R.id.txt_address_detail)
-        val edt_phone = itemView.findViewById<EditText>(com.google.firebase.database.R.id.edt_phone)*/
 
         val phone_input_layout = itemView.findViewById<TextInputLayout>(R.id.phone_input_layout)
         val edt_name = itemView.findViewById<EditText>(R.id.edt_name)
@@ -250,29 +232,17 @@ class MainActivity : AppCompatActivity() {
                                 .addOnCompleteListener {
                                     Common.authorizeToken = it!!.result!!.token
 
-                                    val headers = HashMap<String, String>()
-                                    headers.put("Authorization",Common.buildToken(Common.authorizeToken!!))
+                                    //val headers = HashMap<String, String>()
+                                    //headers.put("Authorization",Common.buildToken(Common.authorizeToken!!))
 
-                                    compositeDisposable.add(cloudFunctions.getToken(headers)
-                                        .subscribeOn(Schedulers.io())
-                                        .observeOn(AndroidSchedulers.mainThread())
-                                        .subscribe({braintreeToken ->
-                                            dialogInterface.dismiss()
-                                            Toast.makeText(
-                                                this@MainActivity,
-                                                "Congratulation! Register success",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            goToHomeActivity(userModel, braintreeToken.token)
-                                        },{t: Throwable? ->
+                                    dialogInterface.dismiss()
+                                    Toast.makeText(
+                                        this@MainActivity,
+                                        "Congratulation! Register success",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    goToHomeActivity(userModel)
 
-                                            dialogInterface.dismiss()
-                                            Toast.makeText(
-                                                this@MainActivity,
-                                                ""+t!!.message,
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }))
                                 }
                         }
                     }
@@ -292,13 +262,13 @@ class MainActivity : AppCompatActivity() {
         dialog.show()
     }
 
-    private fun goToHomeActivity(userModel: UserModel?, token:String?){
+    private fun goToHomeActivity(userModel: UserModel?){
 
         FirebaseInstanceId.getInstance()
             .instanceId
             .addOnFailureListener{e->Toast.makeText(this@MainActivity, ""+e.message,Toast.LENGTH_SHORT).show()
                 Common.currentUser = userModel!!
-                Common.currentToken = token!!
+
                 startActivity(Intent(this@MainActivity, HomeActivity::class.java))
                 finish()
             }
@@ -306,7 +276,6 @@ class MainActivity : AppCompatActivity() {
                 if (task.isSuccessful)
                 {
                     Common.currentUser = userModel!!
-                    Common.currentToken=token!!
                     Common.updateToken(this@MainActivity,task.result!!.token)
                     startActivity(Intent(this@MainActivity, HomeActivity::class.java))
                     finish()

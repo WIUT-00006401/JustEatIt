@@ -37,19 +37,21 @@ class HomeViewModel : ViewModel(), IPopularLoadCallback, IBestDealLoadCallback {
     private var popularLoadCallbackListener:IPopularLoadCallback
     private var bestDealCallbackListener:IBestDealLoadCallback
 
-    val bestDealList:LiveData<List<BestDealModel>>
-        get(){
-            if (bestDealListMutableLiveData==null){
-                bestDealListMutableLiveData = MutableLiveData()
-                messageError = MutableLiveData()
-                loadBestDealList()
-            }
-            return bestDealListMutableLiveData!!
+    fun getBestDealList(key:String):LiveData<List<BestDealModel>>
+    {
+        if (bestDealListMutableLiveData==null){
+            bestDealListMutableLiveData = MutableLiveData()
+            messageError = MutableLiveData()
+            loadBestDealList(key)
         }
+        return bestDealListMutableLiveData!!
+    }
 
-    private fun loadBestDealList() {
+    private fun loadBestDealList(key:String) {
         val tempList = ArrayList<BestDealModel>()
-        val bestDealRef = FirebaseDatabase.getInstance().getReference(Common.BEST_DEALS_REF)
+        val bestDealRef = FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+            .child(key)
+            .child(Common.BEST_DEALS_REF)
         bestDealRef.addListenerForSingleValueEvent(object : ValueEventListener{
             override fun onCancelled(p0: DatabaseError) {
                 bestDealCallbackListener.onBestDealLoadFailed((p0.message!!))
@@ -66,20 +68,22 @@ class HomeViewModel : ViewModel(), IPopularLoadCallback, IBestDealLoadCallback {
         })
     }
 
-    val popularList:LiveData<List<PopularCategoryModel>>
-        get(){
-            if(popularListMutableLiveData==null)
-            {
-                popularListMutableLiveData = MutableLiveData()
-                messageError = MutableLiveData()
-                loadPopularList()
-            }
-            return popularListMutableLiveData!!
+    fun getPopularList(key:String):LiveData<List<PopularCategoryModel>>
+    {
+        if(popularListMutableLiveData==null)
+        {
+            popularListMutableLiveData = MutableLiveData()
+            messageError = MutableLiveData()
+            loadPopularList(key)
         }
+        return popularListMutableLiveData!!
+    }
 
-    private fun loadPopularList() {
+    private fun loadPopularList(key:String) {
         val tempList = ArrayList<PopularCategoryModel>()
-        val popularRef = FirebaseDatabase.getInstance().getReference(Common.POPULAR_REF)
+        val popularRef = FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+            .child(key)
+            .child(Common.POPULAR_REF)
         popularRef.addListenerForSingleValueEvent(object : ValueEventListener{
             override fun onCancelled(p0: DatabaseError) {
                 popularLoadCallbackListener.onPopularLoadFailed((p0.message!!))

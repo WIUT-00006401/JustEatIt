@@ -31,6 +31,8 @@ import com.example.justeatituser.Database.LocalCartDataSource
 import com.example.justeatituser.EventBus.*
 import com.example.justeatituser.Model.CategoryModel
 import com.example.justeatituser.Model.FoodModel
+import com.example.justeatituser.Remote.ICloudFunctions
+import com.example.justeatituser.Remote.RetrofitCloudClient
 import com.google.android.gms.common.api.Status
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
@@ -47,6 +49,7 @@ import dmax.dialog.SpotsDialog
 import io.paperdb.Paper
 import io.reactivex.SingleObserver
 import io.reactivex.android.schedulers.AndroidSchedulers
+import io.reactivex.disposables.CompositeDisposable
 import io.reactivex.disposables.Disposable
 import io.reactivex.schedulers.Schedulers
 import kotlinx.android.synthetic.main.app_bar_home.*
@@ -72,12 +75,16 @@ class HomeActivity : AppCompatActivity() {
     private lateinit var navController: NavController
     private var drawer:DrawerLayout?=null
     private var dialog: AlertDialog?=null
+    private var navView:NavigationView?=null
+
+    private var cloudFunction: ICloudFunctions?=null
+    private val compositeDisposable = CompositeDisposable()
 
     private var menuItemClick = -1
 
     override fun onResume() {
         super.onResume()
-        countCartItem()
+        //countCartItem()
     }
 
 
@@ -99,24 +106,25 @@ class HomeActivity : AppCompatActivity() {
 
 
         drawer = findViewById(R.id.drawer_layout)
-        val navView: NavigationView = findViewById(R.id.nav_view)
+        navView = findViewById(R.id.nav_view)
         navController = findNavController(R.id.nav_host_fragment)
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
         appBarConfiguration = AppBarConfiguration(
             setOf(
+                R.id.nav_restaurant,
                 R.id.nav_home, R.id.nav_menu, R.id.nav_food_detail,
                 R.id.nav_cart
             ), drawer
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
-        navView.setupWithNavController(navController)
+        navView!!.setupWithNavController(navController)
 
-        var headerView = navView.getHeaderView(0)
+        var headerView = navView!!.getHeaderView(0)
         var txt_user = headerView.findViewById<TextView>(R.id.txt_user)
         Common.setSpanString("Hey, ", Common.currentUser!!.name,txt_user)
 
-        navView.setNavigationItemSelectedListener(object :NavigationView.OnNavigationItemSelectedListener{
+        navView!!.setNavigationItemSelectedListener(object :NavigationView.OnNavigationItemSelectedListener{
             override fun onNavigationItemSelected(p0: MenuItem): Boolean {
                 p0.isChecked = true
                 drawer!!.closeDrawers()
@@ -124,25 +132,43 @@ class HomeActivity : AppCompatActivity() {
                 {
                     signOut()
                 }
+                else if (p0.itemId ==R.id.nav_restaurant)
+                {
+                    if (menuItemClick != p0.itemId)
+                        navController.navigate(R.id.nav_restaurant)
+                }
                 else if (p0.itemId ==R.id.nav_home)
                 {
                     if (menuItemClick != p0.itemId)
+                    {
+                        EventBus.getDefault().postSticky(MenuInflateEvent(true))
                         navController.navigate(R.id.nav_home)
+                    }
+
                 }
                 else if (p0.itemId ==R.id.nav_cart)
                 {
                     if (menuItemClick != p0.itemId)
+                    {
+                        EventBus.getDefault().postSticky(MenuInflateEvent(true))
                         navController.navigate(R.id.nav_cart)
+                    }
                 }
                 else if (p0.itemId ==R.id.nav_menu)
                 {
                     if (menuItemClick != p0.itemId)
+                    {
+                        EventBus.getDefault().postSticky(MenuInflateEvent(true))
                         navController.navigate(R.id.nav_menu)
+                    }
                 }
                 else if (p0.itemId ==R.id.nav_view_order)
                 {
                     if (menuItemClick != p0.itemId)
+                    {
+                        EventBus.getDefault().postSticky(MenuInflateEvent(true))
                         navController.navigate(R.id.nav_view_order)
+                    }
                 }
                 else if (p0.itemId ==R.id.nav_update_info)
                 {
@@ -163,7 +189,8 @@ class HomeActivity : AppCompatActivity() {
 
         initPlacesClient()
 
-        countCartItem()
+        //countCartItem()
+        EventBus.getDefault().postSticky(HideFABCart(true))
     }
 
     private fun showNewsDialog() {
@@ -326,6 +353,7 @@ class HomeActivity : AppCompatActivity() {
 
     override fun onStop() {
         EventBus.getDefault().unregister(this)
+        compositeDisposable.clear()
         super.onStop()
     }
 
@@ -357,7 +385,9 @@ class HomeActivity : AppCompatActivity() {
             dialog!!.show()
 
             FirebaseDatabase.getInstance()
-                .getReference("Category")
+                .getReference(Common.RESTAURANT_REF)
+                .child(Common.currentRestaurant!!.uid!!)
+                .child(Common.CATEGORY_REF)
                 .child(event.popularCategoryModel!!.menu_id!!)
                 .addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onCancelled(p0: DatabaseError) {
@@ -373,7 +403,9 @@ class HomeActivity : AppCompatActivity() {
 
                             //Load Food
                             FirebaseDatabase.getInstance()
-                                .getReference("Category")
+                                .getReference(Common.RESTAURANT_REF)
+                                .child(Common.currentRestaurant!!.uid!!)
+                                .child(Common.CATEGORY_REF)
                                 .child(event.popularCategoryModel!!.menu_id!!)
                                 .child("foods")
                                 .orderByChild("id")
@@ -424,7 +456,9 @@ class HomeActivity : AppCompatActivity() {
             dialog!!.show()
 
             FirebaseDatabase.getInstance()
-                .getReference("Category")
+                .getReference(Common.RESTAURANT_REF)
+                .child(Common.currentRestaurant!!.uid!!)
+                .child(Common.CATEGORY_REF)
                 .child(event.model!!.menu_id!!)
                 .addListenerForSingleValueEvent(object :ValueEventListener{
                     override fun onCancelled(p0: DatabaseError) {
@@ -440,7 +474,9 @@ class HomeActivity : AppCompatActivity() {
 
                             //Load Food
                             FirebaseDatabase.getInstance()
-                                .getReference("Category")
+                                .getReference(Common.RESTAURANT_REF)
+                                .child(Common.currentRestaurant!!.uid!!)
+                                .child(Common.CATEGORY_REF)
                                 .child(event.model!!.menu_id!!)
                                 .child("foods")
                                 .orderByChild("id")
@@ -488,7 +524,8 @@ class HomeActivity : AppCompatActivity() {
     {
         if (event.isSuccess)
         {
-            countCartItem()
+            if (Common.currentRestaurant!=null)
+                countCartItem()
         }
     }
 
@@ -511,8 +548,53 @@ class HomeActivity : AppCompatActivity() {
             supportFragmentManager.popBackStack();
     }
 
+    @Subscribe(sticky = true,threadMode = ThreadMode.MAIN)
+    public fun onRestaurantClick(event: MenuItemEvent)
+    {
+        cloudFunction = RetrofitCloudClient.getInstance(event.restaurantModel!!.paymentUrl).create(ICloudFunctions::class.java)
+
+
+        val headers = java.util.HashMap<String, String>()
+        headers.put("Authorization",Common.buildToken(Common.authorizeToken!!))
+
+        compositeDisposable.add(cloudFunction!!.getToken(headers)
+            .subscribeOn(Schedulers.io())
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe({braintreeToken ->
+
+                dialog!!.dismiss()
+                Common.currentToken = braintreeToken.token
+
+            }, {throwable ->
+
+                dialog!!.dismiss()
+                Toast.makeText(this@HomeActivity, ""+throwable.message, Toast.LENGTH_SHORT).show()
+
+            }))
+
+        val bundle = Bundle()
+        bundle.putString("restaurant",event.restaurantModel.uid)
+        navController.navigate(R.id.nav_home,bundle)
+
+        EventBus.getDefault().postSticky(MenuInflateEvent(true))
+        EventBus.getDefault().postSticky(HideFABCart(false))
+
+        countCartItem()
+    }
+
+    @Subscribe(sticky = true,threadMode = ThreadMode.MAIN)
+    public fun onInflateMenu(event: MenuInflateEvent)
+    {
+        navView!!.menu.clear()
+
+        if(event.isShowDetail)
+            navView!!.inflateMenu(R.menu.restaurant_detail_menu)
+        else
+            navView!!.inflateMenu(R.menu.activity_home_drawer)
+    }
+
     private fun countCartItem() {
-        cartDataSource.countItemInCart(Common.currentUser!!.uid!!)
+        cartDataSource.countItemInCart(Common.currentUser!!.uid!!, Common.currentRestaurant!!.uid)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(object : SingleObserver<Int> {

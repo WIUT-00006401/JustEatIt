@@ -7,10 +7,10 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitCloudClient {
     private var instance: Retrofit?=null
 
-    fun getInstance(): Retrofit {
+    fun getInstance(paymentUrl:String): Retrofit {
         if (instance == null)
             instance = Retrofit.Builder()
-                .baseUrl("https://us-central1-justeatit-af3d5.cloudfunctions.net/widgets/")
+                .baseUrl(paymentUrl)
                 .addConverterFactory(GsonConverterFactory.create())
                 .addCallAdapterFactory(RxJava2CallAdapterFactory.create())
                 .build()

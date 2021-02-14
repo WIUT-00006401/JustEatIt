@@ -82,7 +82,9 @@ class ViewOrderFragment: Fragment(), ILoadOrderCallbackListener {
 
         val orderList = ArrayList<OrderModel>()
 
-        FirebaseDatabase.getInstance().getReference(Common.ORDER_REF)
+        FirebaseDatabase.getInstance().getReference(Common.RESTAURANT_REF)
+            .child(Common.currentRestaurant!!.uid)
+            .child(Common.ORDER_REF)
             .orderByChild("userId")
             .equalTo(Common.currentUser!!.uid!!)
             .limitToLast(100)
@@ -297,7 +299,7 @@ class ViewOrderFragment: Fragment(), ILoadOrderCallbackListener {
                             dialog.show()
 
                             //Clear all item in cart
-                            cartDataSource.cleanCart(Common.currentUser!!.uid!!)
+                            cartDataSource.cleanCart(Common.currentUser!!.uid!!,Common.currentRestaurant!!.uid)
                                 .subscribeOn(Schedulers.io())
                                 .observeOn(AndroidSchedulers.mainThread())
                                 .subscribe(object : SingleObserver<Int>{

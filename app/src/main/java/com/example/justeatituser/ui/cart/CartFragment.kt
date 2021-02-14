@@ -133,10 +133,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
 
     lateinit var ifcmService: IFCMService
 
-
     lateinit var listener:ILoadTimeFromFirebaseCallback
-
-
 
 
     override fun onResume() {
@@ -216,7 +213,8 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
 
         setHasOptionsMenu(true)
 
-        cloudFunctions = RetrofitCloudClient.getInstance().create(ICloudFunctions::class.java)
+        cloudFunctions = RetrofitCloudClient.getInstance(Common.currentRestaurant!!.uid).create(ICloudFunctions::class.java)
+
 
         ifcmService = RetrofitFCMClient.getInstance().create(IFCMService::class.java)
 
@@ -476,11 +474,11 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
     }
 
     private fun paymentCOD(address: String, comment: String) {
-        compositeDisposable.add(cartDataSource!!.getAllCart(Common.currentUser!!.uid!!)
+        compositeDisposable.add(cartDataSource!!.getAllCart(Common.currentUser!!.uid!!, Common.currentRestaurant!!.uid)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe({cartItemList ->
-                cartDataSource!!.sumPrice(Common.currentUser!!.uid!!)
+                cartDataSource!!.sumPrice(Common.currentUser!!.uid!!,Common.currentRestaurant!!.uid)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(object :SingleObserver<Double>{
@@ -545,7 +543,9 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
 
     private fun writeOrderToFirebase(order: OrderModel) {
         FirebaseDatabase.getInstance()
-            .getReference(Common.ORDER_REF)
+            .getReference(Common.RESTAURANT_REF)
+            .child(Common.currentRestaurant!!.uid)
+            .child(Common.ORDER_REF)
             .child(Common.createOrderNumber())
             .setValue(order)
             .addOnFailureListener{e->Toast.makeText(context!!,""+e.message,Toast.LENGTH_SHORT).show()}
@@ -553,7 +553,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
                 //Clean Cart
                 if (task.isSuccessful)
                 {
-                    cartDataSource!!.cleanCart(Common.currentUser!!.uid!!)
+                    cartDataSource!!.cleanCart(Common.currentUser!!.uid!!,Common.currentRestaurant!!.uid)
                         .subscribeOn(Schedulers.io())
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(object :SingleObserver<Int>{
@@ -612,7 +612,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
     }
 
     private fun sumCart() {
-        cartDataSource!!.sumPrice(Common.currentUser!!.uid!!)
+        cartDataSource!!.sumPrice(Common.currentUser!!.uid!!,Common.currentRestaurant!!.uid)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(object : SingleObserver<Double>{
@@ -677,7 +677,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
     }
 
     private fun calculateTotalPrice() {
-        cartDataSource!!.sumPrice(Common.currentUser!!.uid!!)
+        cartDataSource!!.sumPrice(Common.currentUser!!.uid!!,Common.currentRestaurant!!.uid)
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe(object :SingleObserver<Double>{
@@ -714,7 +714,7 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
         //if (item!!.itemId == com.google.android.gms.location.R.id.action_clear_cart)
         if (item!!.itemId == R.id.action_clear_cart)
         {
-            cartDataSource!!.cleanCart(Common.currentUser!!.uid!!)
+            cartDataSource!!.cleanCart(Common.currentUser!!.uid!!,Common.currentRestaurant!!.uid)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(object :SingleObserver<Int>{
@@ -752,14 +752,14 @@ class CartFragment : Fragment(), ILoadTimeFromFirebaseCallback, ISearchCategoryC
                 val nonce  = result!!.paymentMethodNonce
 
                 //calculate sum cart
-                cartDataSource!!.sumPrice(Common.currentUser!!.uid!!)
+                cartDataSource!!.sumPrice(Common.currentUser!!.uid!!,Common.currentRestaurant!!.uid)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(object : SingleObserver<Double>{
                         override fun onSuccess(totalPrice: Double) {
                             //Get all item to create cart
                             compositeDisposable.add(
-                                cartDataSource!!.getAllCart(Common.currentUser!!.uid!!)
+                                cartDataSource!!.getAllCart(Common.currentUser!!.uid!!,Common.currentRestaurant!!.uid)
                                     .subscribeOn(AndroidSchedulers.mainThread())
                                     .subscribe({cartItems: List<CartItem>? ->
                                         //After having all cart items, payment will be submitted

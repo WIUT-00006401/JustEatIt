@@ -16,6 +16,7 @@
     <string name="menu_share">Share</string>
     <string name="menu_food_list">Food List</string>
     <string name="menu_news">News</string>
+    <string name="menu_restaurant">Restaurants</string>
 
     <string name="popular_categories">Popular Categories</string>
     <string name="best_deals">Best Deals</string>

@@ -256,6 +256,8 @@ object Common {
 
     }
 
+    var currentRestaurant: RestaurantModel?=null
+    val RESTAURANT_REF: String = "Restaurant"
     val IMAGE_URL: String = "IMAGE_URL"
     val IS_SEND_IMAGE: String = "IS_SEND_IMAGE"
     val NEWS_TOPIC: String="news"
