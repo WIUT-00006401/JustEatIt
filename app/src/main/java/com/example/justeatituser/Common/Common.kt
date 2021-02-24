@@ -3,13 +3,16 @@ package com.example.justeatituser.Common
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Typeface
+import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.SpannableStringBuilder
@@ -65,7 +68,11 @@ object Common {
     }
 
     fun getNewOrderTopic(): String {
-        return java.lang.StringBuilder("/topics/new_order").toString()
+        return java.lang.StringBuilder("/topics/")
+            .append(Common.currentRestaurant!!.uid)
+            .append("_")
+            .append("new_order")
+            .toString()
     }
 
     fun setSpanString(welcome: String, name: String?, txtUser: TextView?) {
@@ -256,30 +263,72 @@ object Common {
 
     }
 
+    fun getNewsTopic(): String {
+        return java.lang.StringBuilder("/topics/")
+            .append(Common.currentRestaurant!!.uid)
+            .append("_")
+            .append("news")
+            .toString()
+    }
+
+    fun generateChatRoomId(a: String, b: String?): String {
+        if (a.compareTo(b!!) > 0)
+            return StringBuilder(a).append(b).toString()
+        else if(a.compareTo(b!!) < 0)
+            return StringBuilder(b!!).append(a).toString()
+        else
+            return StringBuilder("ChatYourself_Error_").append(Random().nextInt()).toString()
+    }
+
+    fun getFileName(contentResolver: ContentResolver?, fileUri: Uri): Any {
+        var result:String?=null
+        if (fileUri.scheme == "content")
+        {
+            val cursor = contentResolver!!.query(fileUri, null, null, null, null)
+            try {
+                if (cursor != null && cursor.moveToFirst())
+                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+            }finally {
+                cursor!!.close()
+            }
+        }
+        if (result == null)
+        {
+            result = fileUri.path
+            val cut = result!!.lastIndexOf('/')
+            if (cut != -1) result = result.substring(cut+1)
+        }
+        return result
+    }
+
+    val CHAT_DETAIL_REF: String = "ChatDetail"
+    val CHAT_REF: String = "Chat"
     var currentRestaurant: RestaurantModel?=null
-    val RESTAURANT_REF: String = "Restaurant"
+    const val RESTAURANT_REF: String = "Restaurant"
+    const val SHIPPING_ORDER_REF: String = "ShippingOrder"
+    const val REFUND_REQUEST_REF: String="RefundRequest"
+    const val ORDER_REF: String = "Order"
+    const val COMMENT_REF: String = "Comments"
+    const val BEST_DEALS_REF: String="BestDeals"
+    const val POPULAR_REF: String="MostPopular"
+    const val USER_REFERENCE="Users"
+    const val CATEGORY_REF: String="Category"
+    const val TOKEN_REF = "Tokens"
+
+
     val IMAGE_URL: String = "IMAGE_URL"
     val IS_SEND_IMAGE: String = "IS_SEND_IMAGE"
-    val NEWS_TOPIC: String="news"
-    val IS_SUBSCRIBE_NEWS: String = "IS_SUBSCRIBE_NEWS"
+    //val NEWS_TOPIC: String="news"
+    //val IS_SUBSCRIBE_NEWS: String = "IS_SUBSCRIBE_NEWS"
     var currentShippingOrder: ShippingOrderModel?=null
-    val SHIPPING_ORDER_REF: String = "ShippingOrder"
-    val REFUND_REQUEST_REF: String="RefundRequest"
     var currentToken: String =""
     var authorizeToken: String?=null
     const val NOTI_TITLE = "title"
     const val NOTI_CONTENT = "content"
-    const val ORDER_REF: String = "Order"
-    const val COMMENT_REF: String = "Comments"
     var foodSelected: FoodModel?=null
     var categorySelected: CategoryModel?=null
-    val CATEGORY_REF: String="Category"
     val FULL_WIDTH_COLUMN: Int = 1
     val DEFAULT_COLUMN_COUNT: Int=0
-    const val BEST_DEALS_REF: String="BestDeals"
-    const val POPULAR_REF: String="MostPopular"
-    var USER_REFERENCE="Users"
-    var currentUser: UserModel?=null
 
-    const val TOKEN_REF = "Tokens"
+    var currentUser: UserModel?=null
 }

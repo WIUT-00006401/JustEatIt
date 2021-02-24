@@ -121,7 +121,9 @@ class FoodDetailFragment : Fragment(), TextWatcher {
 
         //Submit to Comment_ref
         FirebaseDatabase.getInstance()
-            .getReference(Common.COMMENT_REF)
+            .getReference(Common.RESTAURANT_REF)
+            .child(Common.currentRestaurant!!.uid!!)
+            .child(Common.COMMENT_REF)
             .child(Common.foodSelected!!.id!!)
             .push()
             .setValue(commentModel)
@@ -136,7 +138,9 @@ class FoodDetailFragment : Fragment(), TextWatcher {
 
     private fun addRatingToFood(ratingValue: Double) {
         FirebaseDatabase.getInstance()
-            .getReference(Common.CATEGORY_REF)//Select Category
+            .getReference(Common.RESTAURANT_REF)
+            .child(Common.currentRestaurant!!.uid!!)
+            .child(Common.CATEGORY_REF)//Select Category
             .child(Common.categorySelected!!.menu_id!!)//Select menu in category
             .child("foods")//Select foods array
             .child(Common.foodSelected!!.key!!)//Select key

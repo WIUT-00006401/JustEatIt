@@ -28,10 +28,12 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.*
 import com.google.firebase.iid.FirebaseInstanceId
 import com.karumi.dexter.Dexter
+import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionDeniedResponse
 import com.karumi.dexter.listener.PermissionGrantedResponse
 import com.karumi.dexter.listener.PermissionRequest
+import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 import com.karumi.dexter.listener.single.PermissionListener
 import dmax.dialog.SpotsDialog
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -62,10 +64,7 @@ class MainActivity : AppCompatActivity() {
         private val APP_REQUEST_CODE = 7171
     }
 
-    override fun onStart() {
-        super.onStart()
-        firebaseAuth.addAuthStateListener (listener )
-    }
+
 
     override fun onStop() {
         if(listener!=null)
@@ -88,43 +87,54 @@ class MainActivity : AppCompatActivity() {
         Places.initialize(this,getString(R.string.google_maps_key))
         placeClient = Places.createClient(this)
 
-        providers = Arrays.asList<AuthUI.IdpConfig>(AuthUI.IdpConfig.PhoneBuilder().build(),
-        AuthUI.IdpConfig.EmailBuilder().build())
+        providers = Arrays.asList<AuthUI.IdpConfig>(
+            AuthUI.IdpConfig.PhoneBuilder().build(),
+            AuthUI.IdpConfig.EmailBuilder().build()
+        )
 
         userRef = FirebaseDatabase.getInstance().getReference(Common.USER_REFERENCE)
-        firebaseAuth=FirebaseAuth.getInstance()
+        firebaseAuth = FirebaseAuth.getInstance()
         dialog = SpotsDialog.Builder().setContext(this).setCancelable(false).build()
 
 
         listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
             Dexter.withActivity(this@MainActivity)
-                .withPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
-                .withListener(object : PermissionListener {
-                    override fun onPermissionGranted(response: PermissionGrantedResponse?) {
-                        val user = firebaseAuth.currentUser
-                        if (user!= null){
-                            checkUserFromFirebase(user!!)
-                        }
-                        else
+                .withPermissions(Arrays.asList(
+                    android.Manifest.permission.ACCESS_FINE_LOCATION,
+                    android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                    android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                    android.Manifest.permission.CAMERA
+                ))
+                .withListener(object : MultiplePermissionsListener {
+                    override fun onPermissionsChecked(report: MultiplePermissionsReport?) {
+                        if (report!!.areAllPermissionsGranted())
                         {
-                            phoneLogin()
-                        }
+                            val user = firebaseAuth.currentUser
+                            if (user != null){
+                                checkUserFromFirebase(user!!)
+                            }else{
+                                phoneLogin()
+                            }
+                        }else
+                            Toast.makeText(this@MainActivity, "Please accept all permissions", Toast.LENGTH_SHORT).show()
                     }
 
                     override fun onPermissionRationaleShouldBeShown(
-                        permission: PermissionRequest?,
+                        permissions: MutableList<PermissionRequest>?,
                         token: PermissionToken?
                     ) {
-
+                        
                     }
 
-                    override fun onPermissionDenied(response: PermissionDeniedResponse?) {
-                        Toast.makeText(this@MainActivity, "You must accept this permission to use app",
-                            Toast.LENGTH_SHORT).show()
-                    }
+                }
 
-                }).check()
+                    ).check()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        firebaseAuth.addAuthStateListener (listener )
     }
 
     private fun checkUserFromFirebase(user: FirebaseUser){

@@ -104,6 +104,9 @@ class HomeActivity : AppCompatActivity() {
             navController.navigate(R.id.nav_cart)
         }
 
+        fab_chat.setOnClickListener{
+            startActivity(Intent(this,ChatActivity::class.java))
+        }
 
         drawer = findViewById(R.id.drawer_layout)
         navView = findViewById(R.id.nav_view)
@@ -201,14 +204,14 @@ class HomeActivity : AppCompatActivity() {
         val itemView = LayoutInflater.from(this@HomeActivity)
             .inflate(R.layout.layout_subscribe_news, null)
         val ckb_news = itemView.findViewById<View>(R.id.ckb_subscribe_news) as CheckBox
-        val isSubscribeNews = Paper.book().read<Boolean>(Common.IS_SUBSCRIBE_NEWS,false)
+        val isSubscribeNews = Paper.book().read<Boolean>(Common.currentRestaurant!!.uid,false)
         if (isSubscribeNews) ckb_news.isChecked = true
         builder.setNegativeButton("CANCEL",{dialogInterface, i -> dialogInterface.dismiss()})
         builder.setPositiveButton("SEND",{dialogInterface, i ->
             if (ckb_news.isChecked)
             {
-                Paper.book().write(Common.IS_SUBSCRIBE_NEWS,true)
-                FirebaseMessaging.getInstance().subscribeToTopic(Common.NEWS_TOPIC)
+                Paper.book().write(Common.currentRestaurant!!.uid,true)
+                FirebaseMessaging.getInstance().subscribeToTopic(Common.getNewsTopic())
                     .addOnFailureListener{ e:Exception ->
                         Toast.makeText(this, e.message,Toast.LENGTH_SHORT).show()
                     }
@@ -218,8 +221,8 @@ class HomeActivity : AppCompatActivity() {
             }
             else
             {
-                Paper.book().delete(Common.IS_SUBSCRIBE_NEWS)
-                FirebaseMessaging.getInstance().unsubscribeFromTopic(Common.NEWS_TOPIC)
+                Paper.book().delete(Common.currentRestaurant!!.uid)
+                FirebaseMessaging.getInstance().unsubscribeFromTopic(Common.getNewsTopic())
                     .addOnFailureListener{ e:Exception ->
                         Toast.makeText(this, e.message,Toast.LENGTH_SHORT).show()
                     }
@@ -535,9 +538,13 @@ class HomeActivity : AppCompatActivity() {
         if (event.isHide)
         {
             fab.hide()
+            fab_chat.hide()
         }
         else
+        {
             fab.show()
+            fab_chat.show()
+        }
     }
 
     @Subscribe(sticky = true,threadMode = ThreadMode.MAIN)
