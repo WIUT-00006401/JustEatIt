@@ -230,7 +230,8 @@ class FoodDetailFragment : Fragment(), TextWatcher {
         }
 
         //Size
-        totalPrice += Common.foodSelected!!.userSelectedSize!!.price!!.toDouble()
+        if (Common.foodSelected!!.userSelectedSize != null)
+            totalPrice += Common.foodSelected!!.userSelectedSize!!.price!!.toDouble()
 
         displayPrice = totalPrice * number_button!!.number.toInt()
         displayPrice = Math.round(displayPrice * 100.0)/100.0

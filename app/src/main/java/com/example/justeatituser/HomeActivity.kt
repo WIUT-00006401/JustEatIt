@@ -355,6 +355,7 @@ class HomeActivity : AppCompatActivity() {
     }
 
     override fun onStop() {
+        EventBus.getDefault().removeAllStickyEvents()
         EventBus.getDefault().unregister(this)
         compositeDisposable.clear()
         super.onStop()
